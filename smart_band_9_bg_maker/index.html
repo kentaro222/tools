@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Band 9 Active Background Maker Ver.1.0</title>
+<style>
+:root{
+  --band-w:172px;
+  --band-h:320px;
+  --bg:#1a1a1a;
+  --panel:#2d2d2d;
+  --panel2:#242424;
+  --border:#444;
+  --text:#eee;
+  --muted:#9a9a9a;
+  --accent:#007aff;
+  --green:#34c759;
+  --orange:#b66b00;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  padding:16px;
+}
+h1{
+  margin:0 0 16px;
+  text-align:center;
+  font-size:21px;
+  line-height:1.35;
+}
+.app{
+  width:100%;
+  max-width:980px;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:minmax(280px,360px) minmax(300px,1fr);
+  gap:18px;
+  align-items:start;
+}
+.card{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:16px;
+}
+.top-settings{
+  grid-column:1 / -1;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+.preview-card{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.preview-wrap{
+  display:flex;
+  justify-content:center;
+}
+.watch-frame{
+  width:var(--band-w);
+  height:var(--band-h);
+  border:12px solid #333;
+  border-radius:24px;
+  overflow:hidden;
+  background:#000;
+  box-shadow:0 0 28px rgba(0,0,0,.55);
+  cursor:default;
+  touch-action:auto;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.watch-frame.drag-enabled{
+  cursor:grab;
+  touch-action:none;
+}
+.watch-frame.drag-enabled:active{cursor:grabbing}
+canvas{display:block;width:100%;height:100%}
+
+.quick-controls{
+  background:var(--panel2);
+  border:1px solid #3b3b3b;
+  border-radius:12px;
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.control-group{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+.control-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+label{
+  font-size:13px;
+  font-weight:700;
+  color:#d8d8d8;
+}
+.value{
+  min-width:40px;
+  text-align:center;
+  font-size:12px;
+  font-weight:700;
+  color:#34c759;
+  background:#111;
+  padding:3px 8px;
+  border-radius:7px;
+  font-variant-numeric:tabular-nums;
+}
+input[type=range]{width:100%;margin:0}
+input[type=file],input[type=text],select,input[type=color]{
+  width:100%;
+  padding:9px 10px;
+  border-radius:8px;
+  border:1px solid #555;
+  background:#444;
+  color:white;
+  font-size:14px;
+}
+input[type=color]{height:40px;padding:4px}
+button{
+  padding:10px 11px;
+  border:0;
+  border-radius:9px;
+  background:var(--accent);
+  color:white;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+}
+button.secondary{background:#555}
+button.orange{background:var(--orange)}
+button.green{background:var(--green)}
+button.active{
+  outline:2px solid #8cc6ff;
+  box-shadow:0 0 0 3px rgba(0,122,255,.18);
+}
+.button-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.button-row.three{
+  grid-template-columns:1fr 1fr 1fr;
+}
+.status{
+  text-align:center;
+  padding:7px 10px;
+  border-radius:999px;
+  background:#3a3a3a;
+  font-size:12px;
+  font-weight:700;
+}
+.status.active{
+  background:#5a2d00;
+  color:#ffd8a8;
+}
+.help{
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.5;
+}
+.section-title{
+  margin:4px 0 0;
+  padding-bottom:7px;
+  border-bottom:1px solid #484848;
+  font-size:15px;
+  font-weight:800;
+}
+.settings{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.toggle-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding:9px 10px;
+  border-radius:9px;
+  background:#262626;
+  border:1px solid #3e3e3e;
+}
+.color-row{
+  display:grid;
+  grid-template-columns:1fr 58px;
+  gap:8px;
+  align-items:center;
+}
+.footer-note{
+  text-align:center;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.5;
+}
+@media(max-width:760px){
+  .app{grid-template-columns:1fr}
+  .top-settings{
+    grid-column:auto;
+    grid-template-columns:1fr;
+  }
+  .card{padding:14px}
+}
+</style>
+</head>
+<body>
+<h1>Xiaomi Smart Band 9 Active<br>Background Maker Ver.3</h1>
+
+<div class="app">
+
+  <section class="card top-settings">
+    <div class="control-group">
+      <label for="upload">画像を選択</label>
+      <input type="file" id="upload" accept="image/*">
+    </div>
+
+    <div class="control-group">
+      <label for="maskType">黒マスクの位置</label>
+      <select id="maskType">
+        <option value="bottom">下を暗く</option>
+        <option value="top">上を暗く</option>
+        <option value="both">上下を暗く</option>
+        <option value="full" selected>全体を暗く</option>
+        <option value="none">マスクなし</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <div class="control-header">
+        <label for="opacity">黒マスクの濃さ</label>
+        <span class="value" id="opacityVal">20</span>
+      </div>
+      <input type="range" id="opacity" min="0" max="100" step="1" value="20">
+    </div>
+  </section>
+
+  <section class="card preview-card">
+    <div class="preview-wrap">
+      <div class="watch-frame" id="frame">
+        <canvas id="canvas" width="172" height="320"></canvas>
+      </div>
+    </div>
+
+    <div class="quick-controls">
+      <button id="moveToggleBtn" class="orange" type="button">位置調整を開始</button>
+      <div id="moveStatus" class="status">位置調整ロック中</div>
+
+      <div class="control-group">
+        <div class="control-header">
+          <label for="scale">拡大・縮小</label>
+          <span class="value" id="scaleVal">0</span>
+        </div>
+        <input type="range" id="scale" min="-100" max="100" step="1" value="0" disabled>
+        <div class="help">左で縮小、右で拡大。0が基準サイズです。</div>
+      </div>
+
+      <div class="control-group">
+        <label>中央合わせ</label>
+        <div class="button-row">
+          <button id="centerXBtn" type="button" class="secondary">左右だけ中央</button>
+          <button id="centerYBtn" type="button" class="secondary">上下だけ中央</button>
+        </div>
+        <button id="centerBtn" type="button" class="secondary">完全に中央</button>
+      </div>
+
+      <div class="control-group">
+        <div class="control-header">
+          <label for="clockY">時計の上下位置</label>
+          <span class="value" id="clockYVal">30</span>
+        </div>
+        <input type="range" id="clockY" min="-90" max="90" step="1" value="30">
+        <div class="help">上 ←　→ 下　※この位置は自動保存されます。</div>
+      </div>
+
+      <div class="help">
+        通常時は画面をスクロールできます。位置調整を開始した時だけ、プレビュー上の画像をドラッグできます。
+      </div>
+    </div>
+  </section>
+
+  <section class="card settings">
+    <div class="section-title">画像設定</div>
+
+    <div class="control-group">
+      <label>表示モード</label>
+      <div class="button-row">
+        <button id="containBtn" type="button" class="secondary">全体表示</button>
+        <button id="coverBtn" type="button">画面を埋める</button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label for="bgPreset">画像外の色</label>
+      <div class="color-row">
+        <select id="bgPreset">
+          <option value="#000000" selected>黒</option>
+          <option value="#ffffff">白</option>
+          <option value="#808080">グレー</option>
+          <option value="custom">カスタム</option>
+        </select>
+        <input type="color" id="bgColor" value="#000000" title="カスタム色">
+      </div>
+    </div>
+
+    <div class="button-row">
+      <button id="resetImageBtn" type="button" class="secondary">画像調整をリセット</button>
+      <button id="resetAllBtn" type="button" class="secondary">全部リセット</button>
+    </div>
+
+    <div class="section-title">時計プレビュー</div>
+
+    <div class="toggle-row">
+      <label for="clockVisible">時計を表示</label>
+      <input type="checkbox" id="clockVisible" checked>
+    </div>
+
+    <div class="control-group">
+      <label for="clockColor">時計の文字色</label>
+      <select id="clockColor">
+        <option value="#ffffff" selected>白</option>
+        <option value="#000000">黒</option>
+        <option value="#bdbdbd">グレー</option>
+        <option value="#ff3b30">赤</option>
+        <option value="#ffcc00">黄</option>
+        <option value="#34c759">緑</option>
+        <option value="#0a84ff">青</option>
+      </select>
+    </div>
+
+    <div class="section-title">保存</div>
+
+    <div class="control-group">
+      <label for="filename">ファイル名</label>
+      <input type="text" id="filename" value="_sb9a">
+    </div>
+
+    <button id="download" class="green" type="button">PNG形式で保存</button>
+    <div class="footer-note">
+      出力サイズ: 172 × 320 px<br>
+      時計プレビューは目安表示で、保存画像には含まれません。
+    </div>
+  </section>
+</div>
+
+<script>
+const upload = document.getElementById('upload');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const frame = document.getElementById('frame');
+
+const scaleInput = document.getElementById('scale');
+const scaleVal = document.getElementById('scaleVal');
+const opacityInput = document.getElementById('opacity');
+const opacityVal = document.getElementById('opacityVal');
+
+const moveToggleBtn = document.getElementById('moveToggleBtn');
+const moveStatus = document.getElementById('moveStatus');
+
+const containBtn = document.getElementById('containBtn');
+const coverBtn = document.getElementById('coverBtn');
+const centerXBtn = document.getElementById('centerXBtn');
+const centerYBtn = document.getElementById('centerYBtn');
+const centerBtn = document.getElementById('centerBtn');
+const resetImageBtn = document.getElementById('resetImageBtn');
+const resetAllBtn = document.getElementById('resetAllBtn');
+
+const bgPreset = document.getElementById('bgPreset');
+const bgColor = document.getElementById('bgColor');
+
+const maskType = document.getElementById('maskType');
+
+const clockVisible = document.getElementById('clockVisible');
+const clockColor = document.getElementById('clockColor');
+const clockY = document.getElementById('clockY');
+const clockYVal = document.getElementById('clockYVal');
+
+const filename = document.getElementById('filename');
+const downloadBtn = document.getElementById('download');
+const CLOCK_Y_STORAGE_KEY = 'sb9aClockPreviewY';
+
+let img = null;
+let imgX = 0;
+let imgY = 0;
+let imgScale = 1;
+let baseScaleContain = 1;
+let baseScaleCover = 1;
+let currentFitMode = 'cover';
+
+let isMoveEnabled = false;
+let isDragging = false;
+let startDragX = 0;
+let startDragY = 0;
+
+function getBackgroundColor() {
+  return bgPreset.value === 'custom' ? bgColor.value : bgPreset.value;
+}
+
+function loadSavedClockY() {
+  const saved = localStorage.getItem(CLOCK_Y_STORAGE_KEY);
+  if (saved === null) return;
+
+  const value = parseInt(saved, 10);
+  const min = parseInt(clockY.min, 10);
+  const max = parseInt(clockY.max, 10);
+
+  if (Number.isFinite(value)) {
+    const clamped = Math.min(max, Math.max(min, value));
+    clockY.value = String(clamped);
+    clockYVal.textContent = String(clamped);
+  }
+}
+
+function saveClockY() {
+  localStorage.setItem(CLOCK_Y_STORAGE_KEY, clockY.value);
+}
+
+function updateColorControl() {
+  bgColor.disabled = bgPreset.value !== 'custom';
+  bgColor.style.opacity = bgPreset.value === 'custom' ? '1' : '.45';
+}
+
+function updateFitButtons() {
+  containBtn.classList.toggle('active', currentFitMode === 'contain');
+  coverBtn.classList.toggle('active', currentFitMode === 'cover');
+}
+
+function updateMoveUI() {
+  frame.classList.toggle('drag-enabled', isMoveEnabled);
+
+  if (isMoveEnabled) {
+    moveToggleBtn.textContent = '位置調整を終了';
+    moveStatus.textContent = '位置調整モード中';
+    moveStatus.classList.add('active');
+  } else {
+    moveToggleBtn.textContent = '位置調整を開始';
+    moveStatus.textContent = '位置調整ロック中';
+    moveStatus.classList.remove('active');
+    isDragging = false;
+  }
+}
+
+function getZoomFactor(value) {
+  // 0 = 基準サイズ
+  // -100 = 基準の25%、+100 = 基準の400%
+  return value < 0
+    ? 1 + (value / 100) * 0.75
+    : 1 + (value / 100) * 3;
+}
+
+function centerXOnly() {
+  if (!img) return;
+  imgX = (canvas.width - img.width * imgScale) / 2;
+  render();
+}
+
+function centerYOnly() {
+  if (!img) return;
+  imgY = (canvas.height - img.height * imgScale) / 2;
+  render();
+}
+
+function centerImage() {
+  if (!img) return;
+  imgX = (canvas.width - img.width * imgScale) / 2;
+  imgY = (canvas.height - img.height * imgScale) / 2;
+  render();
+}
+
+function applyFit(mode, resetZoom = true) {
+  if (!img) return;
+
+  currentFitMode = mode;
+  if (resetZoom) scaleInput.value = 0;
+
+  const base = mode === 'cover' ? baseScaleCover : baseScaleContain;
+  const zoom = parseInt(scaleInput.value, 10);
+  imgScale = base * getZoomFactor(zoom);
+
+  centerImage();
+  scaleVal.textContent = scaleInput.value;
+  updateFitButtons();
+}
+
+function drawMask() {
+  const type = maskType.value;
+  const opacity = parseInt(opacityInput.value, 10) / 100;
+  if (type === 'none' || opacity <= 0) return;
+
+  ctx.save();
+  ctx.globalAlpha = opacity;
+
+  let grad = null;
+
+  if (type === 'top') {
+    grad = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.5);
+    grad.addColorStop(0, 'black');
+    grad.addColorStop(1, 'transparent');
+  } else if (type === 'bottom') {
+    grad = ctx.createLinearGradient(0, canvas.height, 0, canvas.height * 0.5);
+    grad.addColorStop(0, 'black');
+    grad.addColorStop(1, 'transparent');
+  } else if (type === 'both') {
+    grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, 'black');
+    grad.addColorStop(0.3, 'transparent');
+    grad.addColorStop(0.7, 'transparent');
+    grad.addColorStop(1, 'black');
+  } else if (type === 'full') {
+    ctx.fillStyle = 'black';
+  }
+
+  if (grad) ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}
+
+function drawClockPreview() {
+  if (!clockVisible.checked) return;
+
+  const yOffset = parseInt(clockY.value, 10);
+  const centerX = canvas.width / 2;
+
+  // 実機写真を目安に、時計は大きく固定。上下位置だけ調整可能。
+  const timeY = 246 + yOffset;
+  const dateY = 278 + yOffset;
+
+  ctx.save();
+  ctx.fillStyle = clockColor.value;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+
+  ctx.font = '900 43px sans-serif';
+  ctx.fillText('08:44', centerX, timeY);
+
+  ctx.font = '700 11px sans-serif';
+  ctx.fillText('08/18  TUE', centerX, dateY);
+
+  ctx.restore();
+}
+
+function render(isExport = false) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = getBackgroundColor();
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  if (img) {
+    ctx.drawImage(img, imgX, imgY, img.width * imgScale, img.height * imgScale);
+  } else {
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#666';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '14px sans-serif';
+    ctx.fillText('No Image', canvas.width / 2, canvas.height / 2);
+  }
+
+  drawMask();
+
+  if (!isExport) {
+    drawClockPreview();
+  }
+}
+
+upload.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = event => {
+    const newImg = new Image();
+    newImg.onload = () => {
+      img = newImg;
+      baseScaleContain = Math.min(canvas.width / img.width, canvas.height / img.height);
+      baseScaleCover = Math.max(canvas.width / img.width, canvas.height / img.height);
+
+      scaleInput.disabled = false;
+      currentFitMode = 'cover';
+      scaleInput.value = 0;
+
+      applyFit('cover', false);
+      render();
+    };
+    newImg.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+scaleInput.addEventListener('input', () => {
+  if (!img) return;
+
+  const oldScale = imgScale;
+  const base = currentFitMode === 'cover' ? baseScaleCover : baseScaleContain;
+  const zoom = parseInt(scaleInput.value, 10);
+  imgScale = base * getZoomFactor(zoom);
+
+  const ratio = imgScale / oldScale;
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+
+  imgX = cx - (cx - imgX) * ratio;
+  imgY = cy - (cy - imgY) * ratio;
+
+  scaleVal.textContent = scaleInput.value;
+  render();
+});
+
+opacityInput.addEventListener('input', () => {
+  opacityVal.textContent = opacityInput.value;
+  render();
+});
+
+moveToggleBtn.addEventListener('click', () => {
+  isMoveEnabled = !isMoveEnabled;
+  updateMoveUI();
+});
+
+frame.addEventListener('mousedown', e => {
+  if (!img || !isMoveEnabled) return;
+  isDragging = true;
+  startDragX = e.clientX - imgX;
+  startDragY = e.clientY - imgY;
+});
+
+window.addEventListener('mousemove', e => {
+  if (!isDragging || !isMoveEnabled) return;
+  imgX = e.clientX - startDragX;
+  imgY = e.clientY - startDragY;
+  render();
+});
+
+window.addEventListener('mouseup', () => {
+  isDragging = false;
+});
+
+frame.addEventListener('touchstart', e => {
+  if (!img || !isMoveEnabled) return;
+  const touch = e.touches[0];
+  isDragging = true;
+  startDragX = touch.clientX - imgX;
+  startDragY = touch.clientY - imgY;
+  e.preventDefault();
+}, { passive:false });
+
+window.addEventListener('touchmove', e => {
+  if (!isDragging || !isMoveEnabled) return;
+  const touch = e.touches[0];
+  imgX = touch.clientX - startDragX;
+  imgY = touch.clientY - startDragY;
+  render();
+  e.preventDefault();
+}, { passive:false });
+
+window.addEventListener('touchend', () => {
+  isDragging = false;
+});
+
+containBtn.addEventListener('click', () => {
+  if (!img) return;
+  applyFit('contain', true);
+  render();
+});
+
+coverBtn.addEventListener('click', () => {
+  if (!img) return;
+  applyFit('cover', true);
+  render();
+});
+
+centerXBtn.addEventListener('click', centerXOnly);
+centerYBtn.addEventListener('click', centerYOnly);
+centerBtn.addEventListener('click', centerImage);
+
+resetImageBtn.addEventListener('click', () => {
+  if (!img) return;
+  currentFitMode = 'cover';
+  scaleInput.value = 0;
+  scaleVal.textContent = '0';
+  applyFit('cover', false);
+  render();
+});
+
+resetAllBtn.addEventListener('click', () => {
+  bgPreset.value = '#000000';
+  bgColor.value = '#000000';
+  maskType.value = 'full';
+  opacityInput.value = 20;
+  opacityVal.textContent = '20';
+
+  clockVisible.checked = true;
+  clockColor.value = '#ffffff';
+
+  filename.value = '_sb9a';
+
+  isMoveEnabled = false;
+  updateMoveUI();
+  updateColorControl();
+
+  if (img) {
+    currentFitMode = 'cover';
+    scaleInput.value = 0;
+    scaleVal.textContent = '0';
+    applyFit('cover', false);
+  }
+  render();
+});
+
+bgPreset.addEventListener('change', () => {
+  updateColorControl();
+  render();
+});
+
+bgColor.addEventListener('input', render);
+maskType.addEventListener('change', render);
+clockVisible.addEventListener('change', render);
+clockColor.addEventListener('change', render);
+
+clockY.addEventListener('input', () => {
+  clockYVal.textContent = clockY.value;
+  saveClockY();
+  render();
+});
+
+downloadBtn.addEventListener('click', () => {
+  if (!img) {
+    alert('まずは画像を選択してください。');
+    return;
+  }
+
+  render(true);
+
+  const name = filename.value.trim() || 'sb9a';
+  const link = document.createElement('a');
+  link.download = name + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+
+  render(false);
+});
+
+scaleVal.textContent = scaleInput.value;
+opacityVal.textContent = opacityInput.value;
+clockYVal.textContent = clockY.value;
+loadSavedClockY();
+updateColorControl();
+updateFitButtons();
+updateMoveUI();
+render();
+</script>
+</body>
+</html>
