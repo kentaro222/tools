@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>おい森 生き物チェッカー（魚・虫 統合版）</title>
+    <style>
+        :root {
+            --bg-color: #fcfbf5;
+            --primary-green: #5d9e5a;
+            --accent-brown: #6b4c37;
+            --header-bg: #82b66a;
+            --text-color: #4a4a4a;
+        }
+        body {
+            font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(#e0dec5 15%, transparent 16%), radial-gradient(#e0dec5 15%, transparent 16%);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            border: 2px solid var(--accent-brown);
+        }
+        h1 {
+            text-align: center;
+            color: var(--accent-brown);
+            border-bottom: 3px dashed var(--primary-green);
+            padding-bottom: 10px;
+        }
+        .controls {
+            background: #ecf5e6;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #cce3c2;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: var(--accent-brown);
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        input, select, button {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: var(--primary-green);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: var(--accent-brown);
+        }
+        .weather-toggle {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        .weather-btn {
+            flex: 1;
+            background: #ddd;
+            color: #666;
+        }
+        .weather-btn.active {
+            background: #5d9e5a;
+            color: white;
+        }
+        
+        /* Table Styles */
+        .results-area {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        th, td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: var(--header-bg);
+            color: white;
+            white-space: nowrap;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: white;
+            margin-right: 2px;
+        }
+        .bg-fish { background-color: #6daae2; }
+        .bg-bug { background-color: #8dbd5e; }
+        .bg-loc-fish { background-color: #4a90e2; }
+        .bg-loc-bug { background-color: #8d6e63; }
+        .bg-price { background-color: #e2b346; color: black; }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--primary-green);
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #ddd;
+            border-radius: 10px 10px 0 0;
+            margin-right: 5px;
+            font-weight: bold;
+            color: #666;
+        }
+        .tab.active {
+            background: var(--primary-green);
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .note-text {
+            font-size: 0.85em;
+            color: #d9534f;
+        }
+        .time-badge {
+            font-size: 0.8em;
+            color: #666;
+            background: #eee;
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
+        .type-icon {
+            font-size: 1.2em;
+            vertical-align: middle;
+            margin-right: 4px;
+        }
+
+
+        /* --- Improved UI --- */
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .filter-grid .input-group { margin-bottom: 0; }
+        .sub-controls {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed #b8d2ad;
+        }
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 0 2px;
+        }
+        .checkbox-row input { width: auto; transform: scale(1.15); }
+        .checkbox-row label { display: inline; margin: 0; }
+        .summary-box {
+            background: #fff8df;
+            border: 1px solid #ead594;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 4px;
+            white-space: nowrap;
+        }
+        .status-ending { background: #f8d7da; color: #842029; }
+        .status-new { background: #d1e7dd; color: #0f5132; }
+        .caught-btn {
+            width: auto;
+            min-width: 76px;
+            padding: 6px 8px;
+            font-size: 12px;
+            background: #eee;
+            color: #555;
+            border: 1px solid #ccc;
+        }
+        .caught-btn.caught {
+            background: #5d9e5a;
+            color: white;
+            border-color: #5d9e5a;
+        }
+        tr.is-caught { opacity: 0.58; }
+        .countdown { color: var(--accent-brown); font-size: .9em; margin-top: 8px; }
+        .name-search-row { display: flex; gap: 8px; }
+        .name-search-row input { flex: 1; }
+        .name-search-row button { width: auto; min-width: 84px; }
+        .helper-text { font-size: .8em; color: #777; margin-top: 5px; }
+
+        @media (max-width: 640px) {
+            body { padding: 8px; }
+            .container { padding: 12px; border-width: 1px; }
+            h1 { font-size: 1.35rem; }
+            .tabs { gap: 4px; }
+            .tab { flex: 1; text-align: center; padding: 10px 6px; margin-right: 0; font-size: .9em; }
+            .filter-grid { grid-template-columns: 1fr; }
+            .results-area { overflow-x: visible; }
+            #timeResultsTable, #timeResultsTable tbody, #timeResultsTable tr, #timeResultsTable td {
+                display: block;
+                width: 100%;
+            }
+            #timeResultsTable thead { display: none; }
+            #timeResultsTable tr {
+                box-sizing: border-box;
+                background: white;
+                border: 1px solid #ddd;
+                border-left: 5px solid var(--primary-green);
+                border-radius: 10px;
+                padding: 10px;
+                margin: 10px 0;
+                box-shadow: 0 2px 5px rgba(0,0,0,.05);
+            }
+            #timeResultsTable td {
+                border: 0;
+                padding: 4px 0;
+            }
+            #timeResultsTable td:nth-child(2) { font-size: 1.12em; }
+            #timeResultsTable td:last-child { margin-top: 5px; }
+            .caught-btn { width: 100%; margin-top: 4px; }
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🌳 おい森 生き物チェッカー (魚・虫 統合)</h1>
+    
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('searchTime')">日時から探す</div>
+        <div class="tab" onclick="switchTab('searchName')">名前から探す</div>
+    </div>
+
+    <div id="searchTime" class="tab-content active">
+        <div class="controls">
+            <div class="input-group">
+                <label>現在日時を使用</label>
+                <button onclick="setNow()">今の日時にセット</button>
+            </div>
+            <div class="filter-grid">
+                <div class="input-group">
+                    <label for="inputDate">日付</label>
+                    <input type="date" id="inputDate" onchange="searchByTime()">
+                </div>
+                <div class="input-group">
+                    <label for="inputTime">時刻</label>
+                    <input type="time" id="inputTime" onchange="searchByTime()">
+                </div>
+            </div>
+            <div class="countdown" id="timeCountdown"></div>
+            <div class="input-group" style="margin-top:15px;">
+                <label>天気（シーラカンス・カタツムリ判定用）</label>
+                <div class="weather-toggle">
+                    <button class="weather-btn active" id="weatherClear" onclick="setWeather(false)">晴/曇</button>
+                    <button class="weather-btn" id="weatherRain" onclick="setWeather(true)">雨/雪</button>
+                </div>
+            </div>
+
+            <div class="sub-controls">
+                <div class="filter-grid">
+                    <div class="input-group">
+                        <label for="typeFilter">種類</label>
+                        <select id="typeFilter" onchange="searchByTime()">
+                            <option value="all">魚・虫すべて</option>
+                            <option value="fish">🐟 魚だけ</option>
+                            <option value="bug">🦋 虫だけ</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="locationFilter">場所</label>
+                        <select id="locationFilter" onchange="searchByTime()">
+                            <option value="all">すべての場所</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="minPrice">最低売値</label>
+                        <select id="minPrice" onchange="searchByTime()">
+                            <option value="0">指定なし</option>
+                            <option value="500">500ベル以上</option>
+                            <option value="1000">1,000ベル以上</option>
+                            <option value="3000">3,000ベル以上</option>
+                            <option value="5000">5,000ベル以上</option>
+                            <option value="10000">10,000ベル以上</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="sortOrder">並び順</label>
+                        <select id="sortOrder" onchange="searchByTime()">
+                            <option value="default">データ順</option>
+                            <option value="priceDesc">売値が高い順</option>
+                            <option value="priceAsc">売値が安い順</option>
+                            <option value="name">名前順</option>
+                            <option value="location">場所順</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-group" style="margin-top:10px;">
+                    <label for="quickNameFilter">名前で絞り込み</label>
+                    <input id="quickNameFilter" type="search" placeholder="例: サメ、カブトムシ" oninput="searchByTime()">
+                </div>
+                <div class="checkbox-row">
+                    <input type="checkbox" id="uncaughtOnly" onchange="searchByTime()">
+                    <label for="uncaughtOnly">未捕獲だけ表示</label>
+                </div>
+            </div>
+        </div>
+        <div id="seasonSummary" class="summary-box"></div>
+        <div id="timeResultCount" style="font-weight:bold; margin-bottom:10px; color:var(--primary-green);"></div>
+        <div class="results-area">
+            <table id="timeResultsTable">
+                <thead>
+                    <tr>
+                        <th>種類</th>
+                        <th>名前</th>
+                        <th>場所</th>
+                        <th>売値</th>
+                        <th>時間帯/備考</th>
+                        <th>図鑑</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="searchName" class="tab-content">
+        <div class="controls">
+            <div class="input-group">
+                <label for="creatureNameInput">生き物の名前を検索</label>
+                <div class="name-search-row">
+                    <input id="creatureNameInput" type="search" list="creatureNames" placeholder="名前を入力（例: シーラカンス）" oninput="searchByName()">
+                    <button onclick="searchByName()">検索</button>
+                </div>
+                <datalist id="creatureNames"></datalist>
+                <div class="helper-text">一部の名前でも候補を表示します。</div>
+            </div>
+        </div>
+        <div id="nameResult" class="results-area"></div>
+    </div>
+
+    <div style="margin-top: 20px; font-size: 12px; color: #888; text-align: right;">
+        データ出典: おいでよ どうぶつの森
+    </div>
+</div>
+
+<script>
+// ---------------------------------------------------------
+// DATA DEFINITION (Merged Fish and Bug Data)
+// ---------------------------------------------------------
+const fishData = [
+  {no:1, name:"タナゴ", loc:"川", price:900, start:"11月", end:"2月", time:"-", note:""},
+  {no:2, name:"オイワカ", loc:"川", price:200, start:"-", end:"-", time:"昼", note:""},
+  {no:3, name:"フナ", loc:"川", price:120, start:"-", end:"-", time:"-", note:""},
+  {no:4, name:"ウグイ", loc:"川", price:200, start:"-", end:"-", time:"朝夕夜", note:""},
+  {no:5, name:"ニゴイ", loc:"川", price:200, start:"-", end:"-", time:"-", note:""},
+  {no:6, name:"コイ", loc:"川", price:300, start:"-", end:"-", time:"-", note:""},
+  {no:7, name:"ニシキゴイ", loc:"川", price:2000, start:"-", end:"-", time:"朝夕夜", note:""},
+  {no:8, name:"キンギョ", loc:"川", price:1300, start:"-", end:"-", time:"-", note:""},
+  {no:9, name:"デメキン", loc:"川", price:1300, start:"-", end:"-", time:"昼", note:""},
+  {no:10, name:"メダカ", loc:"ため池", price:300, start:"4月", end:"8月", time:"-", note:""},
+  {no:11, name:"ザリガニ", loc:"ため池", price:200, start:"4月", end:"9月前半", time:"-", note:""},
+  {no:12, name:"カエル", loc:"ため池", price:120, start:"5月", end:"8月", time:"-", note:""},
+  {no:13, name:"ドンコ", loc:"川", price:300, start:"-", end:"-", time:"朝夕夜", note:""},
+  {no:14, name:"ドジョウ", loc:"川", price:300, start:"3月", end:"5月", time:"-", note:""},
+  {no:15, name:"ナマズ", loc:"川", price:800, start:"5月", end:"10月", time:"朝夕夜", note:""},
+  {no:16, name:"ウナギ", loc:"川", price:2000, start:"6月", end:"9月前半", time:"朝夕夜", note:""},
+  {no:17, name:"ライギョ", loc:"川", price:5500, start:"6月", end:"8月", time:"昼", note:""},
+  {no:18, name:"ブルーギル", loc:"川", price:120, start:"-", end:"-", time:"昼", note:""},
+  {no:19, name:"イエローパーチ", loc:"川", price:240, start:"10月", end:"3月", time:"-", note:""},
+  {no:20, name:"ブラックバス", loc:"川", price:300, start:"-", end:"-", time:"-", note:""},
+  {no:21, name:"ワカサギ", loc:"川", price:300, start:"12月", end:"2月", time:"-", note:""},
+  {no:22, name:"アユ", loc:"川", price:900, start:"7月", end:"9月前半", time:"-", note:""},
+  {no:23, name:"ヤマメ", loc:"川", price:1000, start:"3月", end:"11月", time:"朝昼夕", note:"ただし、6月-9月除く"},
+  {no:24, name:"オオイワナ", loc:"滝", price:3800, start:"3月", end:"11月", time:"朝昼夕", note:"ただし、6月-9月除く"},
+  {no:25, name:"ニジマス", loc:"川", price:800, start:"3月", end:"11月", time:"朝昼夕", note:"ただし、6月-9月除く"},
+  {no:26, name:"イトウ", loc:"川", price:15000, start:"12月", end:"2月", time:"朝夕夜", note:""},
+  {no:27, name:"サケ", loc:"川、河口", price:700, start:"9月", end:"9月", time:"-", note:""},
+  {no:28, name:"キングサーモン", loc:"川、河口", price:1800, start:"9月", end:"9月", time:"-", note:""},
+  {no:29, name:"グッピー", loc:"川", price:1300, start:"4月", end:"11月", time:"昼", note:""},
+  {no:30, name:"エンゼルフィッシュ", loc:"川", price:3000, start:"5月", end:"10月", time:"朝夕夜", note:""},
+  {no:31, name:"ピラニア", loc:"川", price:2500, start:"6月", end:"9月前半", time:"昼夜", note:""},
+  {no:32, name:"アロワナ", loc:"川", price:10000, start:"6月", end:"9月前半", time:"朝夕夜", note:""},
+  {no:33, name:"ドラド", loc:"川", price:15000, start:"6月", end:"9月", time:"朝昼夕", note:""},
+  {no:34, name:"ガー", loc:"川", price:6000, start:"6月", end:"9月", time:"朝夕夜", note:""},
+  {no:35, name:"ピラクル", loc:"川", price:10000, start:"7月", end:"9月", time:"朝夕夜", note:""},
+  {no:36, name:"クリオネ", loc:"海", price:1000, start:"12月", end:"2月", time:"-", note:""},
+  {no:37, name:"クラゲ", loc:"海", price:100, start:"8月後半", end:"8月後半", time:"-", note:""},
+  {no:38, name:"タツノオトシゴ", loc:"海", price:1100, start:"4月", end:"11月", time:"-", note:""},
+  {no:39, name:"クマノミ", loc:"海", price:650, start:"4月", end:"9月", time:"-", note:""},
+  {no:40, name:"ミノカサゴ", loc:"海", price:400, start:"4月", end:"11月", time:"-", note:""},
+  {no:41, name:"ハリセンボン", loc:"海", price:240, start:"7月", end:"9月", time:"-", note:""},
+  {no:42, name:"アジ", loc:"海", price:150, start:"-", end:"-", time:"-", note:""},
+  {no:43, name:"イシダイ", loc:"海", price:5000, start:"3月", end:"11月", time:"-", note:""},
+  {no:44, name:"スズキ", loc:"海", price:160, start:"-", end:"-", time:"-", note:""},
+  {no:45, name:"タイ", loc:"海", price:3000, start:"-", end:"-", time:"-", note:""},
+  {no:46, name:"カレイ", loc:"海", price:300, start:"10月", end:"4月", time:"-", note:""},
+  {no:47, name:"ヒラメ", loc:"海", price:800, start:"-", end:"-", time:"-", note:""},
+  {no:48, name:"イカ", loc:"海", price:400, start:"12月", end:"8月前半", time:"-", note:""},
+  {no:49, name:"タコ", loc:"海", price:500, start:"3月", end:"1月", time:"-", note:"ただし、8月-9月前半除く"},
+  {no:50, name:"チョウチンアンコウ", loc:"海", price:2500, start:"11月", end:"3月", time:"朝夕夜", note:""},
+  {no:51, name:"マグロ", loc:"海", price:7000, start:"11月", end:"3月", time:"-", note:""},
+  {no:52, name:"カジキ", loc:"海", price:10000, start:"7月", end:"9月", time:"-", note:""},
+  {no:53, name:"マンボウ", loc:"海", price:4000, start:"6月", end:"9月", time:"朝昼夕", note:""},
+  {no:54, name:"シュモクザメ", loc:"海", price:8000, start:"6月", end:"9月", time:"朝夕夜", note:""},
+  {no:55, name:"サメ", loc:"海", price:15000, start:"6月", end:"9月", time:"朝夕夜", note:""},
+  {no:56, name:"シーラカンス", loc:"海", price:15000, start:"-", end:"-", time:"朝夕夜", note:"雨・雪の日限定"}
+].map(item => ({...item, type: 'fish'}));
+
+const bugData = [
+  {no:1, name:"モンシロチョウ", loc:"空中", price:90, start:"3月", end:"6月", time:"朝昼"},
+  {no:1.1, name:"モンシロチョウ(秋)", loc:"空中", price:90, start:"9月", end:"9月", time:"朝昼", note:"(春と秋に出現)"},
+  {no:2, name:"モンキチョウ", loc:"空中", price:90, start:"3月", end:"6月", time:"朝昼"},
+  {no:2.1, name:"モンキチョウ(秋)", loc:"空中", price:90, start:"9月", end:"9月", time:"朝昼", note:"(春と秋に出現)"},
+  {no:3, name:"アゲハチョウ", loc:"空中", price:160, start:"3月", end:"6月", time:"朝昼"},
+  {no:3.1, name:"アゲハチョウ(秋)", loc:"空中", price:160, start:"7月", end:"9月", time:"朝昼", note:""},
+  {no:4, name:"カラスアゲハ", loc:"空中", price:220, start:"3月", end:"6月", time:"朝昼", note:"青・紫・黒の花付近"},
+  {no:4.1, name:"カラスアゲハ(夏秋)", loc:"空中", price:220, start:"7月", end:"9月", time:"朝昼", note:"青・紫・黒の花付近"},
+  {no:5, name:"オオカバマダラ", loc:"空中", price:140, start:"9月", end:"11月", time:"朝昼"},
+  {no:6, name:"モルフォチョウ", loc:"空中", price:2500, start:"6月", end:"9月", time:"夕"},
+  {no:7, name:"アグリアスチョウ", loc:"空中", price:3000, start:"6月", end:"9月", time:"朝昼"},
+  {no:8, name:"アレクサンドラアゲハ", loc:"空中", price:4000, start:"6月", end:"9月", time:"朝昼"},
+  {no:9, name:"ガ", loc:"外灯", price:60, start:"5月", end:"9月", time:"夜"},
+  {no:10, name:"ヤママユガ", loc:"木", price:1200, start:"6月", end:"9月", time:"夜"},
+  {no:11, name:"ミツバチ", loc:"空中", price:100, start:"3月", end:"6月", time:"朝昼"},
+  {no:11.1, name:"ミツバチ(秋)", loc:"空中", price:100, start:"9月", end:"9月", time:"朝昼", note:""},
+  {no:12, name:"ハチ", loc:"木(揺)", price:4500, start:"-", end:"-", time:"-", note:"木を揺らすと落ちる蜂の巣"},
+  {no:13, name:"トノサマバッタ", loc:"草地", price:200, start:"8月", end:"11月", time:"朝昼夕"},
+  {no:14, name:"ショウリョウバッタ", loc:"草地", price:400, start:"8月", end:"11月", time:"朝昼夕"},
+  {no:15, name:"カマキリ", loc:"花の上", price:430, start:"8月", end:"11月", time:"朝昼"},
+  {no:16, name:"ハナカマキリ", loc:"花の上", price:2400, start:"8月", end:"11月", time:"朝昼", note:"白い花の上"},
+  {no:17, name:"アブラゼミ", loc:"木", price:200, start:"7月", end:"8月", time:"朝昼"},
+  {no:18, name:"ミンミンゼミ", loc:"木", price:300, start:"7月", end:"8月", time:"朝昼"},
+  {no:19, name:"ツクツクホウシ", loc:"木", price:400, start:"7月", end:"9月", time:"朝昼"},
+  {no:20, name:"ヒグラシ", loc:"木", price:550, start:"7月", end:"8月", time:"朝夕"},
+  {no:21, name:"ニイニイゼミ", loc:"木", price:200, start:"7月", end:"8月", time:"夕"},
+  {no:22, name:"アキアカネ", loc:"空中", price:80, start:"9月", end:"10月", time:"夕"},
+  {no:23, name:"ヤンマ", loc:"空中", price:200, start:"6月", end:"8月", time:"夕"},
+  {no:24, name:"オニヤンマ", loc:"空中", price:4500, start:"7月", end:"8月", time:"朝昼夕"},
+  {no:25, name:"イトトンボ", loc:"空中", price:200, start:"6月", end:"8月", time:"朝昼夕"},
+  {no:26, name:"アリ", loc:"腐ったカブ/アメ", price:80, start:"-", end:"-", time:"-", note:"地面に置いた腐ったカブ等に出現"},
+  {no:27, name:"アメンボ", loc:"ため池/川", price:130, start:"6月", end:"9月", time:"朝昼夕"},
+  {no:28, name:"カタツムリ", loc:"花の上", price:250, start:"4月", end:"9月", time:"-", note:"雨の日限定"},
+  {no:29, name:"コオロギ", loc:"草地", price:130, start:"9月", end:"11月", time:"夕夜"},
+  {no:30, name:"スズムシ", loc:"草地", price:430, start:"9月", end:"10月", time:"夕夜"},
+  {no:31, name:"キリギリス", loc:"草地", price:160, start:"7月", end:"9月", time:"朝昼夕"},
+  {no:32, name:"オケラ", loc:"地中", price:280, start:"11月", end:"5月", time:"-", note:"鳴き声のする地面を掘る"},
+  {no:33, name:"テントウムシ", loc:"花の上", price:200, start:"3月", end:"6月", time:"朝昼"},
+  {no:33.1, name:"テントウムシ(秋)", loc:"花の上", price:200, start:"10月", end:"10月", time:"朝昼", note:""},
+  {no:34, name:"ナナホシテントウ", loc:"花の上", price:1000, start:"3月", end:"6月", time:"朝昼"},
+  {no:34.1, name:"ナナホシテントウ(秋)", loc:"花の上", price:1000, start:"10月", end:"10月", time:"朝昼", note:""},
+  {no:35, name:"カマドウマ", loc:"草地", price:400, start:"7月", end:"10月", time:"朝昼夕"},
+  {no:36, name:"ダンゴムシ", loc:"岩(叩)", price:250, start:"-", end:"-", time:"-", note:"岩をスコップで叩くと出現"},
+  {no:37, name:"フンコロガシ", loc:"雪玉", price:800, start:"12月", end:"2月", time:"夕夜", note:"雪玉を転がしている"},
+  {no:38, name:"タマムシ", loc:"木", price:2400, start:"7月", end:"8月", time:"朝昼"},
+  {no:39, name:"コガネムシ", loc:"木", price:100, start:"7月", end:"9月", time:"-"},
+  {no:40, name:"カナブン", loc:"木", price:200, start:"7月", end:"8月", time:"-"},
+  {no:41, name:"ゴライアスハナムグリ", loc:"ヤシの木", price:6000, start:"6月", end:"8月", time:"夕夜"},
+  {no:42, name:"ホタル", loc:"水辺", price:300, start:"6月", end:"6月", time:"夜"},
+  {no:43, name:"カブトムシ", loc:"木", price:1350, start:"7月", end:"8月", time:"夜"},
+  {no:44, name:"アトラスオオカブト", loc:"ヤシの木", price:8000, start:"7月", end:"8月", time:"夜"},
+  {no:45, name:"ゾウカブト", loc:"ヤシの木", price:8000, start:"7月", end:"8月", time:"夜"},
+  {no:46, name:"ヘラクレスオオカブト", loc:"ヤシの木", price:12000, start:"7月", end:"8月", time:"夜"},
+  {no:47, name:"ノコギリクワガタ", loc:"木", price:2000, start:"7月", end:"8月", time:"-"},
+  {no:48, name:"ミヤマクワガタ", loc:"木", price:2000, start:"7月", end:"8月", time:"-"},
+  {no:49, name:"オオクワガタ", loc:"木", price:10000, start:"7月", end:"8月", time:"夜"},
+  {no:50, name:"ニジイロクワガタ", loc:"木", price:10000, start:"6月", end:"9月", time:"夕夜"},
+  {no:51, name:"ゴキブリ", loc:"木", price:5, start:"-", end:"-", time:"-", note:"一年中出現"},
+  {no:52, name:"クモ", loc:"木(揺)", price:300, start:"3月", end:"11月", time:"-", note:"木を揺らすと出現"},
+  {no:53, name:"タランチュラ", loc:"地面", price:8000, start:"6月", end:"8月", time:"夜"},
+  {no:54, name:"サソリ", loc:"地面", price:8000, start:"7月", end:"9月", time:"夜"},
+  {no:55, name:"ハエ", loc:"ラフレシア/ゴミ", price:60, start:"-", end:"-", time:"-", note:"ゴミや腐ったカブ等の周り"},
+  {no:56, name:"ノミ", loc:"住人", price:70, start:"3月", end:"11月", time:"-", note:"住人の体についている"}
+].map(item => ({...item, type: 'bug'}));
+
+const combinedData = [...fishData, ...bugData];
+let isRaining = false;
+
+// ---------------------------------------------------------
+// INITIALIZATION & STATE
+// ---------------------------------------------------------
+const caughtStorageKey = 'oimoriCreatureCheckerCaughtV2';
+let caughtSet = new Set(JSON.parse(localStorage.getItem(caughtStorageKey) || '[]'));
+
+function itemKey(item) {
+    return `${item.type}:${item.no}:${item.name}`;
+}
+
+function saveCaught() {
+    localStorage.setItem(caughtStorageKey, JSON.stringify([...caughtSet]));
+}
+
+window.onload = function() {
+    setNow(false);
+    populateDropdowns();
+    populateLocationFilter();
+    searchByTime();
+};
+
+function switchTab(tabId) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    const headers = document.querySelectorAll('.tab');
+    if(tabId === 'searchTime') headers[0].classList.add('active');
+    else headers[1].classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+}
+
+function setWeather(raining) {
+    isRaining = raining;
+    document.getElementById('weatherClear').classList.toggle('active', !raining);
+    document.getElementById('weatherRain').classList.toggle('active', raining);
+    searchByTime();
+}
+
+function setNow(runSearch = true) {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    document.getElementById('inputDate').value = `${yyyy}-${mm}-${dd}`;
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('inputTime').value = `${hh}:${min}`;
+    if (runSearch) searchByTime();
+}
+
+function populateDropdowns() {
+    const list = document.getElementById('creatureNames');
+    const names = [...new Set(combinedData.map(i => i.name.replace(/\(.*\)/, '')))];
+    names.sort((a,b) => a.localeCompare(b, 'ja'));
+    list.innerHTML = names.map(name => `<option value="${name}"></option>`).join('');
+}
+
+function populateLocationFilter() {
+    const sel = document.getElementById('locationFilter');
+    const locations = [...new Set(combinedData.map(i => i.loc))].sort((a,b) => a.localeCompare(b, 'ja'));
+    locations.forEach(loc => {
+        const opt = document.createElement('option');
+        opt.value = loc;
+        opt.textContent = loc;
+        sel.appendChild(opt);
+    });
+}
+
+// ---------------------------------------------------------
+// LOGIC: PARSING TIME & DATE
+// ---------------------------------------------------------
+function getDayPeriod(hour) {
+    if (hour >= 4 && hour < 9) return "朝";
+    if (hour >= 9 && hour < 16) return "昼";
+    if (hour >= 16 && hour < 21) return "夕";
+    return "夜";
+}
+
+function parseMonth(str) {
+    return parseInt(str.replace(/[^0-9]/g, ''));
+}
+
+function isAvailableInMonth(itemStart, itemEnd, currentMonth, isLateMonth) {
+    if (itemStart === "-" || itemEnd === "-") return true;
+    const startM = parseMonth(itemStart);
+    const endM = parseMonth(itemEnd);
+    if (currentMonth === startM && itemStart.includes("後半") && !isLateMonth) return false;
+    if (currentMonth === endM && itemEnd.includes("前半") && isLateMonth) return false;
+    if (startM <= endM) return currentMonth >= startM && currentMonth <= endM;
+    return currentMonth >= startM || currentMonth <= endM;
+}
+
+function isAvailableAtTime(itemTime, currentHour) {
+    if (itemTime === "-") return true;
+    const currentPeriod = getDayPeriod(currentHour);
+    return itemTime.includes(currentPeriod);
+}
+
+function checkExceptions(item, currentMonth, isLate, raining = isRaining) {
+    if (item.type === 'fish') {
+        if (item.note && item.note.includes("除く")) {
+            if (item.note.includes("6月-9月") && currentMonth >= 6 && currentMonth <= 9) return false;
+            if (item.note.includes("8月-9月前半")) {
+                if (currentMonth === 8) return false;
+                if (currentMonth === 9 && !isLate) return false;
+            }
+        }
+        if (item.name === "シーラカンス" && !raining) return false;
+    } else if (item.type === 'bug') {
+        if (item.name === "カタツムリ" && !raining) return false;
+    }
+    return true;
+}
+
+function isMonthAvailable(item, month, isLate = false) {
+    return isAvailableInMonth(item.start, item.end, month, isLate) && checkExceptions(item, month, isLate, true);
+}
+
+function monthStatus(item, currentMonth) {
+    const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
+    const currentAny = isMonthAvailable(item, currentMonth, false) || isMonthAvailable(item, currentMonth, true);
+    const nextAny = isMonthAvailable(item, nextMonth, false) || isMonthAvailable(item, nextMonth, true);
+    if (currentAny && !nextAny) return 'ending';
+    if (!currentAny && nextAny) return 'new';
+    return '';
+}
+
+function updateCountdown(hour, minute) {
+    const current = hour * 60 + minute;
+    const boundaries = [4*60, 9*60, 16*60, 21*60, 28*60]; // 28:00 = 翌4:00
+    const normalized = current < 4*60 ? current + 24*60 : current;
+    const next = boundaries.find(b => b > normalized) ?? 28*60;
+    const diff = next - normalized;
+    const h = Math.floor(diff / 60);
+    const m = diff % 60;
+    const nextPeriod = getDayPeriod((Math.floor(next / 60)) % 24);
+    document.getElementById('timeCountdown').textContent = `次の時間帯「${nextPeriod}」まで ${h ? h + '時間' : ''}${m}分`;
+}
+
+// ---------------------------------------------------------
+// SEARCH FUNCTIONS
+// ---------------------------------------------------------
+function getSelectedDateParts() {
+    const dateVal = document.getElementById('inputDate').value;
+    const timeVal = document.getElementById('inputTime').value;
+    if (!dateVal || !timeVal) return null;
+    const [, monthStr, dayStr] = dateVal.split('-');
+    const [hourStr, minuteStr] = timeVal.split(':');
+    const day = parseInt(dayStr);
+    return {
+        month: parseInt(monthStr),
+        day,
+        hour: parseInt(hourStr),
+        minute: parseInt(minuteStr),
+        isLate: day >= 16
+    };
+}
+
+function searchByTime() {
+    const parts = getSelectedDateParts();
+    if (!parts) return;
+    updateCountdown(parts.hour, parts.minute);
+
+    let results = combinedData.filter(item =>
+        isAvailableInMonth(item.start, item.end, parts.month, parts.isLate) &&
+        checkExceptions(item, parts.month, parts.isLate) &&
+        isAvailableAtTime(item.time, parts.hour)
+    );
+
+    const typeFilter = document.getElementById('typeFilter').value;
+    const locationFilter = document.getElementById('locationFilter').value;
+    const minPrice = Number(document.getElementById('minPrice').value || 0);
+    const quickName = document.getElementById('quickNameFilter').value.trim().toLowerCase();
+    const uncaughtOnly = document.getElementById('uncaughtOnly').checked;
+
+    if (typeFilter !== 'all') results = results.filter(i => i.type === typeFilter);
+    if (locationFilter !== 'all') results = results.filter(i => i.loc === locationFilter);
+    if (minPrice) results = results.filter(i => i.price >= minPrice);
+    if (quickName) results = results.filter(i => i.name.toLowerCase().includes(quickName));
+    if (uncaughtOnly) results = results.filter(i => !caughtSet.has(itemKey(i)));
+
+    const sortOrder = document.getElementById('sortOrder').value;
+    if (sortOrder === 'priceDesc') results.sort((a,b) => b.price - a.price);
+    if (sortOrder === 'priceAsc') results.sort((a,b) => a.price - b.price);
+    if (sortOrder === 'name') results.sort((a,b) => a.name.localeCompare(b.name, 'ja'));
+    if (sortOrder === 'location') results.sort((a,b) => a.loc.localeCompare(b.loc, 'ja') || b.price-a.price);
+
+    displaySeasonSummary(parts.month);
+    displayResults(results, parts.month);
+}
+
+function displaySeasonSummary(currentMonth) {
+    const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
+    const ending = combinedData.filter(i => monthStatus(i, currentMonth) === 'ending');
+    const coming = combinedData.filter(i => monthStatus(i, currentMonth) === 'new');
+    const unique = arr => [...new Set(arr.map(i => i.name.replace(/\(.*\)/, '')))];
+    const endingNames = unique(ending);
+    const comingNames = unique(coming);
+    const preview = names => names.slice(0, 6).join('、') + (names.length > 6 ? ` ほか${names.length-6}種` : '');
+    document.getElementById('seasonSummary').innerHTML =
+        `<strong>季節の入れ替わり</strong><br>` +
+        `🔴 ${currentMonth}月で終了: ${endingNames.length ? preview(endingNames) : 'なし'}<br>` +
+        `🟢 ${nextMonth}月から出現: ${comingNames.length ? preview(comingNames) : 'なし'}`;
+}
+
+function displayResults(results, currentMonth) {
+    const tbody = document.querySelector('#timeResultsTable tbody');
+    tbody.innerHTML = '';
+    const fishCount = results.filter(i => i.type === 'fish').length;
+    const bugCount = results.filter(i => i.type === 'bug').length;
+    document.getElementById('timeResultCount').innerHTML =
+        `表示中: 計 ${results.length} 種類 (🐟 魚: ${fishCount} / 🦋 虫: ${bugCount})`;
+
+    if (results.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">条件に合う生き物はいません</td></tr>';
+        return;
+    }
+
+    results.forEach(item => {
+        const tr = document.createElement('tr');
+        const key = itemKey(item);
+        const caught = caughtSet.has(key);
+        if (caught) tr.classList.add('is-caught');
+        const timeDisplay = item.time === '-' ? '一日中' : item.time;
+        const noteDisplay = item.note ? `<br><span class="note-text">※${item.note}</span>` : '';
+        const dispName = item.name.replace(/\(.*\)/, '');
+        const typeBadge = item.type === 'fish'
+            ? `<span class="badge bg-fish">🐟 魚</span>`
+            : `<span class="badge bg-bug">🦋 虫</span>`;
+        const locBadgeColor = item.type === 'fish' ? 'bg-loc-fish' : 'bg-loc-bug';
+        const status = monthStatus(item, currentMonth);
+        const statusBadge = status === 'ending'
+            ? '<span class="status-badge status-ending">今月まで</span>'
+            : '';
+
+        tr.innerHTML = `
+            <td>${typeBadge}</td>
+            <td style="font-weight:bold; color:var(--primary-green);">${dispName}${statusBadge}</td>
+            <td><span class="badge ${locBadgeColor}">${item.loc}</span></td>
+            <td><span class="badge bg-price">${item.price.toLocaleString()}ベル</span></td>
+            <td><span class="time-badge">${timeDisplay}</span>${noteDisplay}</td>
+            <td><button class="caught-btn ${caught ? 'caught' : ''}" onclick='toggleCaught(${JSON.stringify(key)})'>${caught ? '✓ 捕獲済み' : '未捕獲'}</button></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function toggleCaught(key) {
+    if (caughtSet.has(key)) caughtSet.delete(key);
+    else caughtSet.add(key);
+    saveCaught();
+    searchByTime();
+    if (document.getElementById('searchName').classList.contains('active')) searchByName();
+}
+
+function searchByName() {
+    const query = document.getElementById('creatureNameInput').value.trim().toLowerCase();
+    const div = document.getElementById('nameResult');
+    div.innerHTML = '';
+    if (!query) return;
+
+    const matches = combinedData.filter(item =>
+        item.name.replace(/\(.*\)/, '').toLowerCase().includes(query)
+    );
+    if (matches.length === 0) {
+        div.innerHTML = '<div class="summary-box">該当する生き物が見つかりません。</div>';
+        return;
+    }
+
+    let html = '';
+    matches.forEach(item => {
+        const seasonDisplay = (item.start === '-') ? '一年中' : `${item.start} 〜 ${item.end}`;
+        const timeDisplay = (item.time === '-') ? '一日中' : item.time;
+        const icon = item.type === 'fish' ? '🐟' : '🦋';
+        const key = itemKey(item);
+        const caught = caughtSet.has(key);
+        html += `
+        <table style="width:100%; border-top: 3px solid var(--primary-green); margin-bottom:15px;">
+            <tr><th style="width:30%">名前</th><td style="font-size:1.2em; font-weight:bold;"><span class="type-icon">${icon}</span>${item.name}</td></tr>
+            <tr><th>場所</th><td>${item.loc}</td></tr>
+            <tr><th>売値</th><td>${item.price.toLocaleString()} ベル</td></tr>
+            <tr><th>時期</th><td>${seasonDisplay}</td></tr>
+            <tr><th>時間帯</th><td>${timeDisplay}</td></tr>
+            <tr><th>備考</th><td style="color:#d9534f;">${item.note || 'なし'}</td></tr>
+            <tr><th>図鑑</th><td><button class="caught-btn ${caught ? 'caught' : ''}" onclick='toggleCaught(${JSON.stringify(key)})'>${caught ? '✓ 捕獲済み' : '未捕獲'}</button></td></tr>
+        </table>`;
+    });
+
+    html += `
+        <div style="margin-top:10px; background:#fff; padding:10px; border:1px dashed #ccc; font-size:0.9em;">
+            <strong>凡例 (時間帯):</strong><br>
+            朝: 4:00～8:59<br>
+            昼: 9:00～15:59<br>
+            夕: 16:00～20:59<br>
+            夜: 21:00～3:59
+        </div>`;
+    div.innerHTML = html;
+}
+
+</script>
+
+</body>
+</html>
