@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カルチョビットA 攻略ツール</title>
+    <style>
+        :root {
+            --primary: #006400; /* Dark Green */
+            --secondary: #32CD32; /* Lime Green */
+            --accent: #FFD700; /* Gold */
+            --bg: #f4f4f4;
+            --card-bg: #ffffff;
+            --text: #333;
+            --danger: #d9534f;
+            --safe: #5cb85c;
+            --highlight: #e3f2fd;
+        }
+
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: var(--primary);
+            text-align: center;
+            border-bottom: 3px solid var(--secondary);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        /* コントロールエリアのデザイン */
+        .controls {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+            display: grid;
+            gap: 20px;
+        }
+
+        .control-section {
+            border-bottom: 1px dashed #ddd;
+            padding-bottom: 15px;
+        }
+        .control-section:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        label {
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            color: var(--primary);
+        }
+
+        select, input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+            background: #fff;
+            box-sizing: border-box; /* 枠線を含めた幅計算 */
+        }
+
+        select:focus, input:focus {
+            border-color: var(--secondary);
+            outline: none;
+            box-shadow: 0 0 5px rgba(50, 205, 50, 0.3);
+        }
+
+        .card-selectors {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        /* タグボタンスタイル */
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .tag {
+            background: #eee;
+            color: #555;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .tag:hover {
+            background: #ddd;
+        }
+        .tag.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* リセットボタン */
+        .btn-reset {
+            background: #666;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn-reset:hover {
+            background: #444;
+        }
+
+        /* 結果リストのデザイン */
+        .results-header {
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #666;
+        }
+
+        .menu-list {
+            display: grid;
+            gap: 15px;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        }
+
+        .menu-card {
+            background: var(--card-bg);
+            border-left: 6px solid var(--secondary);
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s;
+        }
+        
+        .menu-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+        }
+
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 8px;
+        }
+
+        .menu-name {
+            font-size: 1.15em;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .fatigue-badge {
+            font-size: 0.85em;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 12px;
+        }
+        .fatigue-high { background: #ffebee; color: var(--danger); }
+        .fatigue-med { background: #fff3e0; color: #f57c00; }
+        .fatigue-low { background: #e8f5e9; color: var(--safe); }
+
+        .recipe-box {
+            background: #f9f9f9;
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .recipe-label {
+            font-size: 0.8em;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .recipe-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .card-badge {
+            background: #fff;
+            border: 1px solid #ccc;
+            color: #333;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        /* 選択中のカードが含まれていれば強調 */
+        .card-badge.active {
+            background: var(--secondary);
+            color: #fff;
+            border-color: var(--secondary);
+        }
+
+        .stats {
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 0.95em;
+            margin-bottom: 6px;
+        }
+
+        .desc {
+            font-size: 0.9em;
+            color: #555;
+            line-height: 1.5;
+        }
+
+        /* スマホ対応調整 */
+        @media (max-width: 600px) {
+            .card-selectors {
+                grid-template-columns: 1fr; /* スマホでは縦並び */
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>カルチョビットA トレーニング解析</h1>
+
+    <div class="controls">
+        <div class="control-section">
+            <label>🔎 メニュー名から探す（逆引き）</label>
+            <select id="menuSelect" onchange="handleMenuSelect()">
+                <option value="">-- スペシャルメニューを選択 --</option>
+                </select>
+        </div>
+
+        <div class="control-section">
+            <label>🃏 手持ちカードから探す</label>
+            <div class="card-selectors">
+                <select id="card1" onchange="handleCardSelect()"><option value="">カード1</option></select>
+                <select id="card2" onchange="handleCardSelect()"><option value="">カード2</option></select>
+                <select id="card3" onchange="handleCardSelect()"><option value="">カード3</option></select>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <label>⚡ 伸ばしたい能力・効果で絞り込み</label>
+            <input type="text" id="searchInput" placeholder="例: スピード, GK, メンタル..." onkeyup="handleSearchInput()">
+            <div class="tag-container">
+                <span class="tag" onclick="toggleTag('スピード')">スピード</span>
+                <span class="tag" onclick="toggleTag('スタミナ')">スタミナ</span>
+                <span class="tag" onclick="toggleTag('フィジカル')">フィジカル</span>
+                <span class="tag" onclick="toggleTag('キック')">キック</span>
+                <span class="tag" onclick="toggleTag('テクニック')">テクニック</span>
+                <span class="tag" onclick="toggleTag('ジャンプ')">ジャンプ</span>
+                <span class="tag" onclick="toggleTag('メンタル')">メンタル</span>
+                <span class="tag" onclick="toggleTag('回復')">回復</span>
+                <span class="tag" onclick="toggleTag('GK')">GK用</span>
+                <span class="tag" onclick="toggleTag('連携')">連携</span>
+            </div>
+        </div>
+
+        <button class="btn-reset" onclick="resetAll()">条件をリセット</button>
+    </div>
+
+    <div class="results-header" id="resultCount"></div>
+    <div class="menu-list" id="menuList">
+        </div>
+</div>
+
+<script>
+    /* =========================================
+       データベース定義 (分析報告書に基づく)
+       [cite_start][cite: 19, 25, 31, 37]
+       ========================================= */
+    const database = [
+        // フィジカル
+        { name: "野人", cards: ["ランニング", "ダッシュ", "エアロビクス"], stats: "スピード, スタミナ", fatigue: 145, desc: "最強の身体能力強化。疲労が特大のため試合間隔に注意。" },
+        { name: "肉体改造", cards: ["ウェイト", "ダッシュ", "ストレッチ"], stats: "スピード, フィジカル, ジャンプ, キック", fatigue: 150, desc: "総合アスリート化。競り合い強化。疲労最大。" },
+        { name: "タフネスダイナモ", cards: ["プレス", "ランニング", "アジリティ"], stats: "スタミナ, スピード, テクニック", fatigue: 115, desc: "運動量豊富なMF/SB向け。" },
+        { name: "鋼のボディ", cards: ["ビデオ研究", "ウェイト", "キック"], stats: "フィジカル, キック, テクニック", fatigue: 105, desc: "当たり負けしない体。大型FW/CB/GK推奨。" },
+        { name: "オーバートレーニング", cards: ["スライディング", "ランニング", "ウェイト"], stats: "フィジカルUP / スタミナ・メンタルDOWN", fatigue: 145, desc: "諸刃の剣。短期的なフィジカル強化に。" },
+        { name: "アクロバット", cards: ["カウンター", "エアロビクス", "ストレッチ"], stats: "ジャンプ, スピード, テクニック", fatigue: 120, desc: "柔軟性と身体操作性。特殊なクリアやシュートに関連。" },
+
+        // 攻撃・技術
+        { name: "カミソリドリブル", cards: ["ドリブル", "イメージトレーニング"], stats: "スピード, テクニック", fatigue: 93, desc: "鋭い突破力。2枚構成で使いやすい。" },
+        { name: "イリュージョンステップ", cards: ["ダッシュ", "アジリティ", "アロマテラピー"], stats: "スピード, テクニック, キック", fatigue: 100, desc: "幻惑的なステップ。狭い局面での打開。" },
+        { name: "ファンタジスタ", cards: ["プレースキック", "エアロビクス", "サイン会"], stats: "キック, フィジカル, テクニック", fatigue: 95, desc: "No.10タイプ育成。創造性あるプレー。" },
+        { name: "サイドアタック", cards: ["ドリブル", "ランニング"], stats: "スピード, スタミナ, テクニック", fatigue: 126, desc: "サイド突破力。SH/SBに必須。" },
+        { name: "ターゲットマン", cards: ["カウンター", "ヘディング", "ウェイト"], stats: "フィジカル, ヘディング, キック", fatigue: 120, desc: "前線でボールを収めるポストプレーヤー。" },
+        { name: "ボンバーヘッド", cards: ["マンツーマン", "ヘディング", "ミニキャンプ"], stats: "ジャンプ, メンタル, キック", fatigue: 90, desc: "強力なヘディングシュート。" },
+        { name: "空中戦のスペシャリスト", cards: ["セットプレー", "ヘディング", "キック"], stats: "ジャンプ, フィジカル, テクニック", fatigue: 110, desc: "空中戦特化。CBやGKのハイボール対策。" },
+        { name: "ゴールの嗅覚", cards: ["アロマテラピー", "座禅", "イメージトレーニング"], stats: "スピード, フィジカル, テクニック", fatigue: 25, desc: "【疲労極低】ポジショニング向上。FWの調整に最適。" },
+        { name: "怒濤の全員攻撃", cards: ["ドリブル", "パス", "サイン会"], stats: "スピード, ジャンプ, テクニック", fatigue: 105, desc: "チーム全体の攻撃意識向上。" },
+        { name: "キラーパス", cards: ["パス", "キック", "アロマテラピー"], stats: "テクニック, スピード, キック", fatigue: 100, desc: "決定的なスルーパス。" },
+        { name: "クライフターン", cards: ["アジリティ", "エアロビクス"], stats: "スピード, テクニック(特大), メンタル", fatigue: 133, desc: "伝説のターン習得。" },
+
+        // 守備・戦術
+        { name: "インターセプト", cards: ["スライディング", "イメージトレーニング"], stats: "スピード, テクニック, フィジカル", fatigue: 93, desc: "パスカット能力。ボランチ/CB向け。" },
+        { name: "エースキラー", cards: ["マンツーマン", "スライディング", "ダッシュ"], stats: "スピード, フィジカル, スタミナ", fatigue: 120, desc: "対人守備最強。相手のエースを封殺。" },
+        { name: "カテナチオ", cards: ["ビデオ研究", "マンツーマン", "ラインコントロール"], stats: "スタミナ, フィジカル, スピード", fatigue: 35, desc: "【重要】組織守備強化。疲労が低くDF陣全体に推奨。" },
+        { name: "鉄拳制裁", cards: ["マンツーマン", "ウェイト", "合気道"], stats: "フィジカル, メンタル, キック", fatigue: 80, desc: "アグレッシブな守備。" },
+        { name: "執念のクリア", cards: ["ヘディング", "ストレッチ", "合気道"], stats: "ジャンプ, メンタル, フィジカル", fatigue: 110, desc: "ゴール前の危機回避。" },
+        { name: "カバーリング", cards: ["ラインコントロール", "ダッシュ"], stats: "スピード, フィジカル, テクニック", fatigue: 80, desc: "スペースを埋める守備。スイーパー向け。" },
+        { name: "コンパクトフィールド", cards: ["プレス", "ラインコントロール"], stats: "スピード, スタミナ, テクニック", fatigue: 40, desc: "陣形維持。プレッシング効果向上。" },
+        { name: "アグレッシブボランチ", cards: ["プレス", "ドリブル", "スライディング"], stats: "スピード, スタミナ, フィジカル", fatigue: 120, desc: "攻守に関与する万能MF育成。" },
+        { name: "オフサイドトラップ", cards: ["ラインコントロール", "ミーティング"], stats: "メンタル, フィジカル, キック", fatigue: 20, desc: "ライン統率。連携が必要。" },
+        { name: "決死のブロック", cards: ["座禅", "スライディング"], stats: "メンタル, 守備反応", fatigue: 80, desc: "【GK推奨】シュートストップ能力を直接強化。" },
+
+        // メンタル・回復
+        { name: "チーム愛", cards: ["サイン会", "アロマテラピー", "ミーティング"], stats: "メンタル(特大)", fatigue: 10, desc: "【最重要】疲労10でメンタル+20。連戦の合間に全員実施推奨。" },
+        { name: "ウルトラリラックス", cards: ["ストレッチ", "アロマテラピー", "温泉"], stats: "全能力微増, 疲労回復", fatigue: 65, desc: "疲労回復効果を持つ貴重なメニュー。" },
+        { name: "ロスタイムの奇跡", cards: ["カウンター", "セットプレー", "合気道"], stats: "メンタル, スピード, テクニック", fatigue: 40, desc: "勝負強さを養う。" },
+        { name: "キャプテンシー", cards: ["ランニング", "ミーティング"], stats: "メンタル, スピード", fatigue: 66, desc: "チームの精神的支柱を育成。" },
+        { name: "アイコンタクト", cards: ["ミーティング", "ミニゲーム"], stats: "連携", fatigue: 0, desc: "連携度向上。" },
+        { name: "オプションプレー", cards: ["セットプレー", "イメージトレーニング"], stats: "テクニック, キック, フィジカル", fatigue: 40, desc: "セットプレー強化。" }
+    ];
+
+    /* =========================================
+       ロジック部分
+       ========================================= */
+    
+    // DOM要素の取得
+    const elMenuSelect = document.getElementById('menuSelect');
+    const elCardSelects = [
+        document.getElementById('card1'),
+        document.getElementById('card2'),
+        document.getElementById('card3')
+    ];
+    const elSearchInput = document.getElementById('searchInput');
+    const elResultList = document.getElementById('menuList');
+    const elResultCount = document.getElementById('resultCount');
+
+    // 初期化処理
+    document.addEventListener('DOMContentLoaded', () => {
+        initDropdowns();
+        renderResults(database); // 最初は全表示
+    });
+
+    function initDropdowns() {
+        // 1. メニュー選択プルダウンの生成 (名前順)
+        const sortedMenus = [...database].sort((a, b) => a.name.localeCompare(b.name, "ja"));
+        sortedMenus.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.name;
+            opt.textContent = m.name;
+            elMenuSelect.appendChild(opt);
+        });
+
+        // 2. カード選択プルダウンの生成
+        const allCards = new Set();
+        database.forEach(m => m.cards.forEach(c => allCards.add(c)));
+        const sortedCards = Array.from(allCards).sort((a, b) => a.localeCompare(b, "ja"));
+
+        elCardSelects.forEach(select => {
+            sortedCards.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                select.appendChild(opt);
+            });
+        });
+    }
+
+    // イベントハンドラ: メニュー選択時
+    function handleMenuSelect() {
+        const selectedMenuName = elMenuSelect.value;
+        if (selectedMenuName) {
+            // 他の条件をリセット
+            elCardSelects.forEach(s => s.value = "");
+            elSearchInput.value = "";
+            clearActiveTags();
+
+            // 選択されたメニューだけを表示
+            const result = database.filter(m => m.name === selectedMenuName);
+            renderResults(result);
+        } else {
+            // リセットされたら全表示
+            resetAll();
+        }
+    }
+
+    // イベントハンドラ: カード選択時
+    function handleCardSelect() {
+        // メニュー選択を解除
+        elMenuSelect.value = "";
+        
+        filterResults();
+    }
+
+    // イベントハンドラ: 検索入力時
+    function handleSearchInput() {
+        // メニュー選択を解除
+        elMenuSelect.value = "";
+        
+        filterResults();
+    }
+
+    // タグ機能
+    function toggleTag(tagName) {
+        // メニュー選択解除
+        elMenuSelect.value = "";
+
+        const currentVal = elSearchInput.value;
+        // 簡易的に上書き入力にする（または追加する仕様も可だが、スマホでの使いやすさ重視で置換）
+        elSearchInput.value = tagName;
+        
+        // タグの見た目制御
+        clearActiveTags();
+        const tags = document.querySelectorAll('.tag');
+        tags.forEach(tag => {
+            if (tag.textContent === tagName) tag.classList.add('active');
+        });
+
+        filterResults();
+    }
+
+    function clearActiveTags() {
+        document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+    }
+
+    // フィルタリング実行
+    function filterResults() {
+        const selectedCards = elCardSelects.map(s => s.value).filter(v => v !== "");
+        const searchKeyword = elSearchInput.value.toLowerCase().trim();
+
+        const filtered = database.filter(menu => {
+            let isMatch = true;
+
+            // 1. カード条件: 選択されたカードをすべて含んでいるメニューを探す
+            // (例: 「ダッシュ」を選択 -> ダッシュを含む全メニューを表示)
+            if (selectedCards.length > 0) {
+                // 部分一致ロジック: 選択したカードがそのメニューに含まれているか
+                // 選択したカード全てが、そのメニューの構成カードに含まれている必要がある
+                const hasAllSelected = selectedCards.every(c => menu.cards.includes(c));
+                if (!hasAllSelected) isMatch = false;
+            }
+
+            // 2. キーワード条件
+            if (searchKeyword && isMatch) {
+                const textData = (menu.name + menu.stats + menu.desc).toLowerCase();
+                if (!textData.includes(searchKeyword)) {
+                    isMatch = false;
+                }
+            }
+
+            return isMatch;
+        });
+
+        renderResults(filtered);
+    }
+
+    // 描画処理
+    function renderResults(list) {
+        elResultList.innerHTML = "";
+        const selectedCards = elCardSelects.map(s => s.value).filter(v => v !== "");
+
+        if (list.length === 0) {
+            elResultCount.textContent = "条件に一致するメニューが見つかりません";
+            return;
+        }
+
+        elResultCount.textContent = `${list.length} 件のメニューが見つかりました`;
+
+        list.forEach(menu => {
+            const el = document.createElement('div');
+            el.className = 'menu-card';
+
+            // 疲労度クラス判定
+            let fClass = "fatigue-low";
+            if (menu.fatigue >= 100) fClass = "fatigue-high";
+            else if (menu.fatigue >= 50) fClass = "fatigue-med";
+
+            // カードバッジ生成
+            const cardsHtml = menu.cards.map(c => {
+                const isActive = selectedCards.includes(c) ? 'active' : '';
+                return `<span class="card-badge ${isActive}">${c}</span>`;
+            }).join("");
+
+            el.innerHTML = `
+                <div class="menu-header">
+                    <span class="menu-name">${menu.name}</span>
+                    <span class="fatigue-badge ${fClass}">疲労: ${menu.fatigue}</span>
+                </div>
+                <div class="recipe-box">
+                    <div class="recipe-label">必要カード:</div>
+                    <div class="recipe-cards">${cardsHtml}</div>
+                </div>
+                <div class="stats">効果: ${menu.stats}</div>
+                <div class="desc">${menu.desc}</div>
+            `;
+            elResultList.appendChild(el);
+        });
+    }
+
+    // リセット
+    function resetAll() {
+        elMenuSelect.value = "";
+        elCardSelects.forEach(s => s.value = "");
+        elSearchInput.value = "";
+        clearActiveTags();
+        renderResults(database);
+    }
+
+</script>
+
+</body>
+</html>
