@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>濃度・混合計算ツール</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --error-bg: #fef2f2;
+            --error-text: #dc2626;
+            --result-bg: #eff6ff;
+            --result-border: #bfdbfe;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 600px;
+            overflow: hidden;
+        }
+
+        /* タブのスタイル */
+        .tabs {
+            display: flex;
+            background-color: #f9fafb;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 16px;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary);
+            background-color: #f3f4f6;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background-color: var(--card-bg);
+        }
+
+        /* コンテンツエリア */
+        .tab-content {
+            display: none;
+            padding: 24px;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* フォームのスタイル */
+        .header-text {
+            margin-bottom: 20px;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 480px) {
+            .row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #374151;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+            background-color: #fff;
+            color: var(--text-main);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+
+        .section-title {
+            margin-top: 8px;
+            margin-bottom: 12px;
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: var(--primary);
+            border-bottom: 2px solid var(--result-border);
+            padding-bottom: 4px;
+        }
+
+        /* 結果表示エリア */
+        .result-box {
+            background-color: var(--result-bg);
+            border: 1px solid var(--result-border);
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .result-text {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #1e3a8a;
+            text-align: center;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .result-value {
+            font-weight: bold;
+            font-size: 1.25rem;
+            color: var(--primary);
+        }
+
+        .hr-line {
+            border: 0;
+            border-top: 1px dashed #93c5fd;
+            margin: 12px 0;
+        }
+
+        /* メッセージ */
+        .note {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .alert {
+            color: var(--error-text);
+            background-color: var(--error-bg);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            margin-top: 20px;
+            display: none;
+            border: 1px solid #fecaca;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('salt')">🧂 食塩水</button>
+        <button class="tab-btn" onclick="switchTab('glycerin')">🧪 グリセリン</button>
+    </div>
+
+    <div id="salt" class="tab-content active">
+        <p class="header-text">合計重量（g）と塩分％を入力すると、必要な <b>塩（g）</b> と <b>水（cc）</b> を自動計算します。<br>※水の密度は 1g = 1cc と近似しています。</p>
+
+        <div class="row">
+            <div class="input-group">
+                <label>作りたい合計重量 (g)</label>
+                <input id="salt-total" type="number" inputmode="decimal" placeholder="例: 40" value="40">
+            </div>
+            <div class="input-group">
+                <label>塩分 (%)</label>
+                <input id="salt-pct" type="number" inputmode="decimal" placeholder="例: 15" value="15" min="0" max="26">
+            </div>
+        </div>
+
+        <p class="note">💡 参考：3%は浅漬け向き、10%は保存向き、26%付近は飽和状態に近くなります。</p>
+
+        <div id="salt-warn" class="alert"></div>
+
+        <div class="result-box">
+            <div id="salt-out" class="result-text">数値を入力してください。</div>
+        </div>
+    </div>
+
+    <div id="glycerin" class="tab-content">
+        <p class="header-text">異なる濃度の2つの液を混ぜて、目的の濃度の液を作るための分量を自動計算します。</p>
+
+        <div class="section-title">用意する液（現有液）</div>
+        <div class="row">
+            <div class="input-group">
+                <label>液A の濃度 (%)</label>
+                <input type="number" id="gly-concA" placeholder="例: 85" value="85" step="0.1">
+            </div>
+            <div class="input-group">
+                <label>液B の濃度 (%)</label>
+                <input type="number" id="gly-concB" placeholder="例: 0" value="0" step="0.1">
+                <p class="note" style="margin-top:4px;">※水の場合は0</p>
+            </div>
+        </div>
+
+        <div class="section-title">作りたい液（目標）</div>
+        <div class="row">
+            <div class="input-group">
+                <label>目標の濃度 (%)</label>
+                <input type="number" id="gly-targetConc" placeholder="例: 50" value="50" step="0.1">
+            </div>
+            <div class="input-group">
+                <label>作りたい量 (g または mL)</label>
+                <input type="number" id="gly-targetVol" placeholder="例: 40" value="40" step="1">
+            </div>
+        </div>
+
+        <div id="gly-error" class="alert"></div>
+
+        <div id="gly-result" class="result-box">
+            <div class="result-item">
+                <span>液A を入れる量:</span>
+                <span class="result-value"><span id="gly-resA">0</span></span>
+            </div>
+            <div class="result-item">
+                <span>液B を入れる量:</span>
+                <span class="result-value"><span id="gly-resB">0</span></span>
+            </div>
+            <hr class="hr-line">
+            <div class="result-item" style="font-size: 1rem; color: #4b5563;">
+                <span>合計:</span>
+                <span id="gly-resTotal" style="font-weight: bold;">0</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- タブ切り替えロジック ---
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+
+    // --- 数値フォーマット ---
+    function format(n) { 
+        return isFinite(n) ? Number(n).toFixed(2).replace(/\.?0+$/, '') : ''; 
+    }
+
+    // --- 食塩水 計算ロジック ---
+    const saltTotalInput = document.getElementById('salt-total');
+    const saltPctInput = document.getElementById('salt-pct');
+    const saltOut = document.getElementById('salt-out');
+    const saltWarn = document.getElementById('salt-warn');
+
+    function calcSalt() {
+        saltWarn.style.display = 'none';
+        saltWarn.textContent = '';
+        saltOut.style.color = '#1e3a8a';
+
+        const T = Number(saltTotalInput.value);
+        const P = Number(saltPctInput.value);
+
+        if (saltTotalInput.value === '' || saltPctInput.value === '' || !isFinite(T) || !isFinite(P) || T <= 0) {
+            saltOut.textContent = '正しい数値を入力してください。';
+            saltOut.style.color = '#6b7280';
+            return;
+        }
+        if (P < 0 || P > 100) {
+            saltWarn.textContent = '塩分は0〜100%の間で入力してください。';
+            saltWarn.style.display = 'block';
+            saltOut.textContent = '—';
+            return;
+        }
+        if (P > 26) {
+            saltWarn.textContent = '⚠️ 26%を超えると飽和食塩水に近づき、溶け残る可能性があります。';
+            saltWarn.style.display = 'block';
+        }
+
+        const salt_g = T * (P / 100);
+        const water_g = T - salt_g;
+
+        saltOut.innerHTML = `
+            塩：<span style="font-size:1.4em;">${format(salt_g)}</span> g<br>
+            水：<span style="font-size:1.4em;">${format(water_g)}</span> cc (g)
+        `;
+    }
+
+    // --- グリセリン 計算ロジック ---
+    const glyInputs = ['gly-concA', 'gly-concB', 'gly-targetConc', 'gly-targetVol'].map(id => document.getElementById(id));
+    const glyError = document.getElementById('gly-error');
+    const glyResult = document.getElementById('gly-result');
+
+    function calcGlycerin() {
+        const concA = parseFloat(document.getElementById('gly-concA').value);
+        const concB = parseFloat(document.getElementById('gly-concB').value);
+        const targetConc = parseFloat(document.getElementById('gly-targetConc').value);
+        const targetVol = parseFloat(document.getElementById('gly-targetVol').value);
+
+        glyError.style.display = 'none';
+        glyResult.style.opacity = '1';
+
+        // 入力チェック
+        if (isNaN(concA) || isNaN(concB) || isNaN(targetConc) || isNaN(targetVol)) {
+            showGlyError("すべての項目に数値を入力してください。");
+            return;
+        }
+        if (targetVol <= 0) {
+            showGlyError("作りたい量は0より大きい値を入力してください。");
+            return;
+        }
+        if (concA === concB) {
+             showGlyError("液Aと液Bは異なる濃度にしてください。");
+             return;
+        }
+
+        const maxConc = Math.max(concA, concB);
+        const minConc = Math.min(concA, concB);
+
+        if (targetConc > maxConc || targetConc < minConc) {
+            showGlyError(`目標濃度 (${targetConc}%) は、液Aと液Bの間 (${minConc}% 〜 ${maxConc}%) にしてください。`);
+            return;
+        }
+
+        // 天秤算 (連立方程式の解)
+        const amountA = targetVol * (targetConc - concB) / (concA - concB);
+        const amountB = targetVol - amountA;
+
+        document.getElementById('gly-resA').innerText = format(amountA);
+        document.getElementById('gly-resB').innerText = format(amountB);
+        document.getElementById('gly-resTotal').innerText = format(targetVol);
+    }
+
+    function showGlyError(msg) {
+        glyError.innerText = msg;
+        glyError.style.display = 'block';
+        
+        // エラー時は結果を少し薄くして「計算できない」状態を表現
+        document.getElementById('gly-resA').innerText = "—";
+        document.getElementById('gly-resB').innerText = "—";
+        document.getElementById('gly-resTotal').innerText = "—";
+        glyResult.style.opacity = '0.5';
+    }
+
+    // --- イベントリスナーの登録 ---
+    [saltTotalInput, saltPctInput].forEach(el => el.addEventListener('input', calcSalt));
+    glyInputs.forEach(el => el.addEventListener('input', calcGlycerin));
+
+    // 初期読み込み時の計算実行
+    calcSalt();
+    calcGlycerin();
+</script>
+
+</body>
+</html>
