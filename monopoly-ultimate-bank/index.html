@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1f8a4c">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monopoly-Ultimate-Bank</title>
+    <style>
+        :root { --monopoly-green: #1f8a4c; --monopoly-bg: #e6f0e6; --box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: var(--monopoly-bg); color: #333; max-width: 1000px; margin: 0 auto; padding: 10px; }
+        h1 { text-align: center; color: var(--monopoly-green); border-bottom: 3px solid var(--monopoly-green); padding-bottom: 10px; margin-top: 5px; font-size: 24px;}
+        
+        .grid-container { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        @media (min-width: 800px) { .grid-container { grid-template-columns: 1fr 1fr 1fr; } }
+        
+        .card { background: white; padding: 12px; border-radius: 8px; box-shadow: var(--box-shadow); margin-bottom: 10px; }
+        h3 { margin-top: 0; color: #444; border-bottom: 1px solid #eee; padding-bottom: 5px; font-size: 15px; }
+        
+        .form-group { margin-bottom: 8px; display: flex; gap: 5px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+        input, select, button { padding: 6px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; }
+        input[type="text"], input[type="number"], select { flex-grow: 1; min-width: 80px; }
+        
+        button { background-color: var(--monopoly-green); color: white; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { background-color: #166b3a; }
+        .btn-small { padding: 3px 6px; font-size: 11px; }
+        .btn-red { background-color: #d9534f; }
+        .btn-gray { background-color: #6c757d; }
+        .btn-blue { background-color: #007bff; }
+        .btn-orange { background-color: #ff8c00; }
+        .btn-purple { background-color: #6f42c1; }
+        
+        /* サプライ・ログ・ツール */
+        .supply-board { display: flex; justify-content: space-around; background: #333; color: white; padding: 8px; border-radius: 6px; margin-bottom: 15px; font-weight: bold; font-size: 14px;}
+        #log-area { height: 120px; overflow-y: auto; background: #fff; padding: 8px; border: 1px solid #ccc; font-size: 12px; border-radius: 4px;}
+        .log-entry { border-bottom: 1px dashed #eee; padding: 3px 0; }
+        
+        .dice-area { text-align: center; font-size: 18px; font-weight: bold; padding: 5px; background: #f8f9fa; border: 2px dashed #ccc; border-radius: 6px; margin-bottom: 5px;}
+        .card-result { min-height: 40px; padding: 8px; background: #fffbe6; border: 1px solid #ffeeba; border-radius: 4px; font-weight: bold; font-size: 13px; text-align: center;}
+
+        /* プレイヤーカード */
+        .player-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
+        .player-card { border: 2px solid var(--monopoly-green); padding: 10px; border-radius: 8px; background: #fdfdfd; }
+        .balance { font-size: 20px; font-weight: bold; color: var(--monopoly-green); margin: 5px 0; }
+        
+        .property-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow-y: auto; }
+        .prop-item { display: flex; justify-content: space-between; align-items: center; padding: 3px 6px; border-radius: 4px; border: 1px solid #ccc; background: white; font-size: 12px; }
+        .prop-color { width: 10px; height: 10px; display: inline-block; border-radius: 2px; margin-right: 5px; border: 1px solid rgba(0,0,0,0.2); }
+        .prop-mortgaged { opacity: 0.6; background-color: #eee; text-decoration: line-through; }
+        .prop-controls { display: flex; gap: 2px; }
+
+        /* 権利書モーダル（ポップアップ） */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center;
+        }
+        .deed-card {
+            background: white; width: 280px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            overflow: hidden; text-align: center; position: relative; border: 2px solid #222; font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+        .deed-header {
+            padding: 15px 5px; border-bottom: 2px solid #222; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        .deed-body { padding: 15px; font-size: 14px; line-height: 1.5; background: #fffdf5; }
+        .deed-rent-list { text-align: left; margin: 10px 0; font-size: 13px; }
+        .deed-rent-list div { display: flex; justify-content: space-between; margin-bottom: 2px; }
+        .deed-close {
+            position: absolute; top: 8px; right: 8px; cursor: pointer; background: rgba(255,255,255,0.8); color: black;
+            border: 1px solid #333; border-radius: 50%; width: 26px; height: 26px; font-weight: bold; font-size: 14px; display: flex; justify-content: center; align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>モノポリー・アルティメット銀行</h1>
+
+    <div class="card" style="display: flex; justify-content: space-between; align-items: center; background: #fffbe6; border: 1px solid #ffeeba; margin-bottom: 15px; padding: 8px 12px;">
+        <div style="display: flex; align-items: center; gap: 5px;">
+            <input type="checkbox" id="wakeLockToggle" onchange="toggleWakeLock()" style="width: 16px; height: 16px;">
+            <label for="wakeLockToggle" style="font-size: 14px; font-weight: bold; cursor: pointer;">🔆 画面消灯を防止</label>
+        </div>
+        <button class="btn-red btn-small" onclick="resetData()">🚨 データをリセット</button>
+    </div>
+
+    <div id="deedModal" class="modal-overlay" onclick="closePropertyCard(event)">
+        <div class="deed-card" onclick="event.stopPropagation()">
+            <button class="deed-close" onclick="closePropertyCard()">✖</button>
+            <div id="deedHeader" class="deed-header">
+                <h3 id="deedName" style="margin:0; border:none; padding:0; color:inherit; font-size: 18px;">物件名</h3>
+            </div>
+            <div id="deedBody" class="deed-body">
+                </div>
+        </div>
+    </div>
+
+    <div class="supply-board">
+        <span>🏠 家の残り: <span id="supplyHouses">32</span></span>
+        <span>🏨 ホテルの残り: <span id="supplyHotels">12</span></span>
+    </div>
+
+    <div class="grid-container">
+        <div>
+            <div class="card">
+                <h3>🎲 ツール（サイコロ・カード）</h3>
+                <div class="form-group" style="display: flex; gap: 4px;">
+                    <button class="btn-blue" onclick="rollDice()" style="flex:1;">サイコロ</button>
+                    <button class="btn-orange" onclick="drawCard('chance')" style="flex:1;">❓</button>
+                    <button class="btn-orange" onclick="drawCard('chest')" style="flex:1;">🧰</button>
+                </div>
+                <div id="diceResult" class="dice-area">サイコロ: - , -</div>
+                <div id="cardResult" class="card-result">カードを引いてください</div>
+            </div>
+
+            <div class="card">
+                <h3>👤 プレイヤー追加</h3>
+                <div class="form-group">
+                    <input type="text" id="playerName" placeholder="名前">
+                    <button onclick="addPlayer()">参加 ($1500)</button>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="card">
+                <h3>💸 資金の送金</h3>
+                <div class="form-group">
+                    <select id="fromPlayer"><option value="bank">🏦 銀行</option></select> ▶ 
+                    <select id="toPlayer"><option value="bank">🏦 銀行</option></select>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="transferAmount" placeholder="金額 $" min="1">
+                    <button onclick="executeTransfer()">送金</button>
+                </div>
+            </div>
+
+            <div class="card" style="border: 2px solid #6f42c1;">
+                <h3 style="color: #6f42c1;">🔨 競売（オークション） / 定価購入</h3>
+                <div class="form-group" style="display:flex; gap: 4px;">
+                    <select id="auctionPropSelect" style="flex-grow:1;"><option value="">物件...</option></select>
+                    <button onclick="showPropertyCard(document.getElementById('auctionPropSelect').value)" class="btn-blue" style="padding: 6px 10px;">ℹ️ 詳細</button>
+                </div>
+                <div class="form-group">
+                    <select id="auctionWinnerSelect"><option value="">購入・落札者...</option></select>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="auctionPrice" placeholder="価格（落札額） $" min="1">
+                    <button class="btn-purple" onclick="executeAuction()" style="width:100%;">購入 / 落札確定！</button>
+                </div>
+                <small style="color:#666; font-size:11px;">※定価購入の場合も、価格を入力して確定してください。</small>
+            </div>
+        </div>
+
+        <div>
+            <div class="card">
+                <h3>🤝 プレイヤー間取引</h3>
+                <div class="form-group">
+                    <select id="tradePropSelect"><option value="">譲渡する物件...</option></select>
+                </div>
+                <div class="form-group">
+                    <select id="tradeToSelect"><option value="">譲渡先...</option></select>
+                    <button onclick="executePropTrade()">物件譲渡</button>
+                </div>
+                <hr style="border:0; border-top:1px dashed #ccc; margin: 8px 0;">
+                <div class="form-group">
+                    <select id="jailTradeFrom"><option value="">釈放カードを渡す人...</option></select>
+                </div>
+                <div class="form-group">
+                    <select id="jailTradeTo"><option value="">受け取る人...</option></select>
+                    <button class="btn-orange" onclick="executeJailCardTrade()">カード譲渡</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📜 取引履歴</h3>
+                <div id="log-area"></div>
+            </div>
+        </div>
+    </div>
+
+    <h3 style="margin-left: 10px;">👥 プレイヤー状況と資産管理</h3>
+    <small style="margin-left: 10px; color:#666;">※物件名をタップすると権利書の詳細（家賃など）を確認できます</small>
+    <div id="playersContainer" class="player-list"></div>
+
+    <script>
+        // --- データ定義 ---
+        let players = [];
+        let playerIdCounter = 1;
+        let supply = { houses: 32, hotels: 12 };
+
+        const chanceTexts = [ "GOへ進め。($200受取)", "イリノイ通りへ進め。", "セントチャールズプレイスへ進め。", "一番近い公共事業へ進め。", "一番近い鉄道へ進め。", "銀行より$50受取。", "刑務所から釈放される。(キープ可)", "3マス戻れ。", "刑務所へ行け。", "各プレイヤーに$50払え。", "修理費を払え。(家$25/ホテル$100)" ];
+        const chestTexts = [ "GOへ進め。($200受取)", "銀行のエラー。$200受取。", "医者に$50払え。", "株の売却益$50受取。", "刑務所から釈放される。(キープ可)", "刑務所へ行け。", "オペラのチケット代、各人から$50受取。", "クリスマスファンド受取$100。", "遺産相続$100受取。", "生命保険満期$100受取。", "病院に$100払え。" ];
+
+        // ★家賃データ(rent)を追加しました。rent: [更地, 家1, 家2, 家3, 家4, ホテル]
+        let properties = [
+            { id: 'br1', name: "地中海通り", color: "#8b4513", type: "color", price: 60, housePrice: 50, rent: [2, 10, 30, 90, 160, 250], owner: null, mortgaged: false, houses: 0 },
+            { id: 'br2', name: "バルト海通り", color: "#8b4513", type: "color", price: 60, housePrice: 50, rent: [4, 20, 60, 180, 320, 450], owner: null, mortgaged: false, houses: 0 },
+            { id: 'lb1', name: "オリエンタル通り", color: "#87ceeb", type: "color", price: 100, housePrice: 50, rent: [6, 30, 90, 270, 400, 550], owner: null, mortgaged: false, houses: 0 },
+            { id: 'lb2', name: "バーモント通り", color: "#87ceeb", type: "color", price: 100, housePrice: 50, rent: [6, 30, 90, 270, 400, 550], owner: null, mortgaged: false, houses: 0 },
+            { id: 'lb3', name: "コネチカット通り", color: "#87ceeb", type: "color", price: 120, housePrice: 50, rent: [8, 40, 100, 300, 450, 600], owner: null, mortgaged: false, houses: 0 },
+            { id: 'pi1', name: "セントチャールズプレイス", color: "#ff69b4", type: "color", price: 140, housePrice: 100, rent: [10, 50, 150, 450, 625, 750], owner: null, mortgaged: false, houses: 0 },
+            { id: 'pi2', name: "ステーツ通り", color: "#ff69b4", type: "color", price: 140, housePrice: 100, rent: [10, 50, 150, 450, 625, 750], owner: null, mortgaged: false, houses: 0 },
+            { id: 'pi3', name: "バージニア通り", color: "#ff69b4", type: "color", price: 160, housePrice: 100, rent: [12, 60, 180, 500, 700, 900], owner: null, mortgaged: false, houses: 0 },
+            { id: 'or1', name: "セントジェームスプレイス", color: "#ffa500", type: "color", price: 180, housePrice: 100, rent: [14, 70, 200, 550, 750, 950], owner: null, mortgaged: false, houses: 0 },
+            { id: 'or2', name: "テネシー通り", color: "#ffa500", type: "color", price: 180, housePrice: 100, rent: [14, 70, 200, 550, 750, 950], owner: null, mortgaged: false, houses: 0 },
+            { id: 'or3', name: "ニューヨーク通り", color: "#ffa500", type: "color", price: 200, housePrice: 100, rent: [16, 80, 220, 600, 800, 1000], owner: null, mortgaged: false, houses: 0 },
+            { id: 're1', name: "ケンタッキー通り", color: "#ff0000", type: "color", price: 220, housePrice: 150, rent: [18, 90, 250, 700, 875, 1050], owner: null, mortgaged: false, houses: 0 },
+            { id: 're2', name: "インディアナ通り", color: "#ff0000", type: "color", price: 220, housePrice: 150, rent: [18, 90, 250, 700, 875, 1050], owner: null, mortgaged: false, houses: 0 },
+            { id: 're3', name: "イリノイ通り", color: "#ff0000", type: "color", price: 240, housePrice: 150, rent: [20, 100, 300, 750, 925, 1100], owner: null, mortgaged: false, houses: 0 },
+            { id: 'ye1', name: "アトランティック通り", color: "#ffd700", type: "color", price: 260, housePrice: 150, rent: [22, 110, 330, 800, 975, 1150], owner: null, mortgaged: false, houses: 0 },
+            { id: 'ye2', name: "ベントノール通り", color: "#ffd700", type: "color", price: 260, housePrice: 150, rent: [22, 110, 330, 800, 975, 1150], owner: null, mortgaged: false, houses: 0 },
+            { id: 'ye3', name: "マービンガーデン", color: "#ffd700", type: "color", price: 280, housePrice: 150, rent: [24, 120, 360, 850, 1025, 1200], owner: null, mortgaged: false, houses: 0 },
+            { id: 'gr1', name: "パシフィック通り", color: "#008000", type: "color", price: 300, housePrice: 200, rent: [26, 130, 390, 900, 1100, 1275], owner: null, mortgaged: false, houses: 0 },
+            { id: 'gr2', name: "ノースカロライナ通り", color: "#008000", type: "color", price: 300, housePrice: 200, rent: [26, 130, 390, 900, 1100, 1275], owner: null, mortgaged: false, houses: 0 },
+            { id: 'gr3', name: "ペンシルバニア通り", color: "#008000", type: "color", price: 320, housePrice: 200, rent: [28, 150, 450, 1000, 1200, 1400], owner: null, mortgaged: false, houses: 0 },
+            { id: 'db1', name: "パークプレイス", color: "#00008b", type: "color", price: 350, housePrice: 200, rent: [35, 175, 500, 1100, 1300, 1500], owner: null, mortgaged: false, houses: 0 },
+            { id: 'db2', name: "ボードウォーク", color: "#00008b", type: "color", price: 400, housePrice: 200, rent: [50, 200, 600, 1400, 1700, 2000], owner: null, mortgaged: false, houses: 0 },
+            { id: 'rr1', name: "リーディング鉄道", color: "#333", type: "railroad", price: 200, owner: null, mortgaged: false },
+            { id: 'rr2', name: "ペンシルバニア鉄道", color: "#333", type: "railroad", price: 200, owner: null, mortgaged: false },
+            { id: 'rr3', name: "B&O鉄道", color: "#333", type: "railroad", price: 200, owner: null, mortgaged: false },
+            { id: 'rr4', name: "ショートライン鉄道", color: "#333", type: "railroad", price: 200, owner: null, mortgaged: false },
+            { id: 'ut1', name: "電力会社", color: "#999", type: "utility", price: 150, owner: null, mortgaged: false },
+            { id: 'ut2', name: "水道会社", color: "#999", type: "utility", price: 150, owner: null, mortgaged: false }
+        ];
+
+        // --- データ保存・復元・リセット ---
+        function saveState() {
+            const state = { players, playerIdCounter, supply, properties };
+            localStorage.setItem('monopolyState', JSON.stringify(state));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('monopolyState');
+            if (saved) {
+                const state = JSON.parse(saved);
+                players = state.players;
+                playerIdCounter = state.playerIdCounter;
+                supply = state.supply;
+                // 古いセーブデータで家賃データ(rent)が消えないよう、所有状況だけを反映する
+                state.properties.forEach(savedProp => {
+                    let p = properties.find(prop => prop.id === savedProp.id);
+                    if(p) { p.owner = savedProp.owner; p.mortgaged = savedProp.mortgaged; p.houses = savedProp.houses || 0; }
+                });
+                addLog("💾 前回プレイ時のデータを復元しました。");
+            }
+        }
+
+        function resetData() {
+            if (confirm("本当にすべてのデータをリセットしますか？この操作は取り消せません。")) {
+                localStorage.removeItem('monopolyState');
+                location.reload(); 
+            }
+        }
+
+        // --- 画面消灯防止 (Wake Lock API) ---
+        let wakeLock = null;
+        async function toggleWakeLock() {
+            const toggle = document.getElementById('wakeLockToggle');
+            if (toggle.checked) {
+                try { wakeLock = await navigator.wakeLock.request('screen'); addLog("🔆 画面消灯を防止しています。"); } 
+                catch (err) { alert("お使いのブラウザは画面消灯防止機能に対応していません。"); toggle.checked = false; }
+            } else {
+                if (wakeLock !== null) { wakeLock.release(); wakeLock = null; addLog("🌙 画面消灯防止を解除しました。"); }
+            }
+        }
+        document.addEventListener('visibilitychange', async () => {
+            const toggle = document.getElementById('wakeLockToggle');
+            if (wakeLock !== null && document.visibilityState === 'visible' && toggle.checked) wakeLock = await navigator.wakeLock.request('screen');
+        });
+
+        // --- 権利書モーダル（ポップアップ）制御 ---
+        function showPropertyCard(propId) {
+            if(!propId) return alert("物件が選択されていません。");
+            const prop = properties.find(p => p.id === propId);
+            if(!prop) return;
+
+            const modal = document.getElementById('deedModal');
+            const header = document.getElementById('deedHeader');
+            const nameLabel = document.getElementById('deedName');
+            const body = document.getElementById('deedBody');
+
+            nameLabel.innerText = prop.name;
+            header.style.backgroundColor = prop.color;
+            // 黄色や水色の場合は見やすいように文字を黒に
+            header.style.color = (prop.type === 'color' && ['#ffd700', '#87ceeb'].includes(prop.color)) ? '#222' : 'white';
+
+            let contentHtml = '';
+            if (prop.type === 'color') {
+                contentHtml = `
+                    <div style="font-size:15px; margin-bottom:5px;">定価: <b>$${prop.price}</b> (抵当: $${prop.price/2})</div>
+                    <div style="font-size:15px; margin-bottom:5px;">家・ホテル建築費: <b>$${prop.housePrice}</b> / 1軒</div>
+                    <hr style="border-top:1px solid #ccc; margin:10px 0;">
+                    <div class="deed-rent-list">
+                        <div><span>更地（初期家賃）:</span> <b>$${prop.rent[0]}</b></div>
+                        <div style="font-size:11px; color:#666; justify-content:center; margin-bottom:8px;">※同色グループを独占で更地家賃が2倍</div>
+                        <div><span>家 1軒:</span> <b>$${prop.rent[1]}</b></div>
+                        <div><span>家 2軒:</span> <b>$${prop.rent[2]}</b></div>
+                        <div><span>家 3軒:</span> <b>$${prop.rent[3]}</b></div>
+                        <div><span>家 4軒:</span> <b>$${prop.rent[4]}</b></div>
+                        <div style="margin-top:5px; padding-top:5px; border-top:1px dashed #ccc;">
+                            <span style="color:#e67e22; font-weight:bold; font-size:14px;">ホテル:</span> 
+                            <b style="color:#e67e22; font-size:14px;">$${prop.rent[5]}</b>
+                        </div>
+                    </div>
+                `;
+            } else if (prop.type === 'railroad') {
+                contentHtml = `
+                    <div style="font-size:15px; margin-bottom:5px;">定価: <b>$${prop.price}</b> (抵当: $${prop.price/2})</div>
+                    <hr style="border-top:1px solid #ccc; margin:10px 0;">
+                    <div class="deed-rent-list">
+                        <div><span>鉄道 1枚 所有:</span> <b>$25</b></div>
+                        <div><span>鉄道 2枚 所有:</span> <b>$50</b></div>
+                        <div><span>鉄道 3枚 所有:</span> <b>$100</b></div>
+                        <div><span>鉄道 4枚 所有:</span> <b>$200</b></div>
+                    </div>
+                `;
+            } else if (prop.type === 'utility') {
+                contentHtml = `
+                    <div style="font-size:15px; margin-bottom:5px;">定価: <b>$${prop.price}</b> (抵当: $${prop.price/2})</div>
+                    <hr style="border-top:1px solid #ccc; margin:10px 0;">
+                    <div style="text-align:left; font-size:14px; line-height: 1.6;">
+                        <p style="margin: 5px 0;"><b>1枚 所有:</b><br>サイコロの出目の <b>4倍</b> を支払う。</p>
+                        <p style="margin: 5px 0;"><b>2枚 所有:</b><br>サイコロの出目の <b>10倍</b> を支払う。</p>
+                    </div>
+                `;
+            }
+            body.innerHTML = contentHtml;
+            modal.style.display = 'flex';
+        }
+
+        function closePropertyCard(e) {
+            // 背景クリック時のみ、または✖ボタンから直接呼ばれた時のみ閉じる
+            if(e && e.target !== e.currentTarget) return; 
+            document.getElementById('deedModal').style.display = 'none';
+        }
+
+        // --- ツール系 ---
+        function rollDice() {
+            const d1 = Math.floor(Math.random() * 6) + 1, d2 = Math.floor(Math.random() * 6) + 1;
+            const doubleText = (d1 === d2) ? " 🎲ゾロ目！" : "";
+            document.getElementById('diceResult').innerText = `サイコロ: ${d1} , ${d2} (計: ${d1+d2})${doubleText}`;
+            addLog(`🎲 サイコロ: ${d1+d2} ${doubleText}`);
+        }
+
+        function drawCard(type) {
+            let deck = type === 'chance' ? chanceTexts : chestTexts;
+            let title = type === 'chance' ? "❓ チャンス" : "🧰 共同基金";
+            let result = deck[Math.floor(Math.random() * deck.length)];
+            document.getElementById('cardResult').innerHTML = `<strong>${title}:</strong><br>${result}`;
+            addLog(`🃏 カード: [${title}] ${result}`);
+        }
+
+        // --- 基本システム ---
+        function addPlayer() {
+            const name = document.getElementById('playerName').value.trim();
+            if (!name) return;
+            players.push({ id: playerIdCounter++, name: name, balance: 1500, jailCards: 0 });
+            addLog(`👤 [${name}] が参加しました。`);
+            document.getElementById('playerName').value = '';
+            updateUI();
+        }
+
+        function executeTransfer() {
+            const fromId = document.getElementById('fromPlayer').value;
+            const toId = document.getElementById('toPlayer').value;
+            const amount = parseInt(document.getElementById('transferAmount').value);
+
+            if (fromId === toId || !amount || amount <= 0) return alert("入力が正しくありません");
+            let fromName = "🏦 銀行", toName = "🏦 銀行";
+            if (fromId !== "bank") {
+                const p = players.find(p => p.id == fromId);
+                if (p.balance < amount) return alert("残高不足です");
+                p.balance -= amount;
+                fromName = p.name;
+            }
+            if (toId !== "bank") {
+                const p = players.find(p => p.id == toId);
+                p.balance += amount;
+                toName = p.name;
+            }
+            addLog(`💸 ${fromName} ➡ ${toName} : <b>$${amount}</b>`);
+            document.getElementById('transferAmount').value = '';
+            updateUI();
+        }
+
+        function passGo(id) {
+            players.find(p => p.id == id).balance += 200;
+            addLog(`🎉 GO通過！銀行 ➡ ${players.find(p => p.id == id).name} : <b>$200</b>`);
+            updateUI();
+        }
+
+        // --- 物件・競売システム ---
+        function executeAuction() {
+            const propId = document.getElementById('auctionPropSelect').value;
+            const winnerId = document.getElementById('auctionWinnerSelect').value;
+            const price = parseInt(document.getElementById('auctionPrice').value);
+            
+            if(!propId || !winnerId || !price || price <= 0) return alert("物件、購入者、価格をすべて入力してください");
+            const prop = properties.find(p => p.id === propId);
+            const winner = players.find(p => p.id == winnerId);
+            
+            if(winner.balance < price) return alert("残高が不足しています！");
+            
+            winner.balance -= price;
+            prop.owner = winner.id;
+            
+            const isAuction = price !== prop.price;
+            const actionText = isAuction ? "競売で落札" : "銀行から購入";
+            addLog(`🔨 <b>${winner.name}</b> が <b>${prop.name}</b> を $${price} で ${actionText} しました！`);
+            
+            document.getElementById('auctionPrice').value = '';
+            updateUI();
+        }
+
+        function executePropTrade() {
+            const propId = document.getElementById('tradePropSelect').value;
+            const toId = document.getElementById('tradeToSelect').value;
+            if (!propId || !toId) return alert("物件と相手を選択してください");
+
+            const prop = properties.find(p => p.id === propId);
+            const oldOwner = players.find(p => p.id == prop.owner);
+            const newOwner = players.find(p => p.id == toId);
+
+            prop.owner = newOwner.id;
+            addLog(`🤝 <b>${oldOwner.name}</b> が <b>${prop.name}</b> を <b>${newOwner.name}</b> に譲渡しました。`);
+            updateUI();
+        }
+
+        // --- 釈放カード管理 ---
+        function manageJailCard(id, change) {
+            const p = players.find(p => p.id == id);
+            if (p.jailCards + change < 0) return;
+            p.jailCards += change;
+            addLog(`🗝️ ${p.name} が釈放カードを${change > 0 ? '手に入れました' : '使用・破棄しました'}。`);
+            updateUI();
+        }
+
+        function executeJailCardTrade() {
+            const fromId = document.getElementById('jailTradeFrom').value;
+            const toId = document.getElementById('jailTradeTo').value;
+            if (!fromId || !toId || fromId === toId) return alert("対象を正しく選択してください");
+
+            const pFrom = players.find(p => p.id == fromId);
+            const pTo = players.find(p => p.id == toId);
+
+            if (pFrom.jailCards <= 0) return alert(`${pFrom.name} は釈放カードを持っていません`);
+            
+            pFrom.jailCards--;
+            pTo.jailCards++;
+            addLog(`🤝 <b>${pFrom.name}</b> が <b>${pTo.name}</b> に 釈放カードを譲渡しました。`);
+            updateUI();
+        }
+
+        // --- 抵当・建築システム ---
+        function toggleMortgage(propId) {
+            const prop = properties.find(p => p.id === propId);
+            const owner = players.find(p => p.id == prop.owner);
+            if (prop.houses > 0) return alert("家がある物件は抵当に入れられません。");
+
+            if (!prop.mortgaged) {
+                const value = prop.price / 2;
+                owner.balance += value;
+                prop.mortgaged = true;
+                addLog(`🏦 <b>${prop.name}</b> を抵当に入れ、銀行から $${value} 受け取りました。`);
+            } else {
+                const value = Math.ceil((prop.price / 2) * 1.1);
+                if (owner.balance < value) return alert(`抵当解除には $${value} 必要です`);
+                owner.balance -= value;
+                prop.mortgaged = false;
+                addLog(`🏦 $${value} 払い、<b>${prop.name}</b> の抵当を解除しました。`);
+            }
+            updateUI();
+        }
+
+        function buildHouse(propId, isBuying) {
+            const prop = properties.find(p => p.id === propId);
+            const owner = players.find(p => p.id == prop.owner);
+            if (prop.mortgaged) return alert("抵当物件には建築できません。");
+
+            if (isBuying) {
+                if (prop.houses >= 5) return alert("これ以上建てられません。");
+                if (owner.balance < prop.housePrice) return alert("資金不足です。");
+                if (prop.houses < 4 && supply.houses <= 0) return alert("銀行に家の在庫がありません！");
+                if (prop.houses === 4 && supply.hotels <= 0) return alert("銀行にホテルの在庫がありません！");
+
+                owner.balance -= prop.housePrice;
+                prop.houses++;
+                if (prop.houses === 5) { supply.houses += 4; supply.hotels--; } else { supply.houses--; }
+                addLog(`🔨 <b>${prop.name}</b> に増築 (-$${prop.housePrice})`);
+            } else {
+                if (prop.houses <= 0) return;
+                owner.balance += prop.housePrice / 2;
+                if (prop.houses === 5) { 
+                    if(supply.houses < 4) return alert("銀行に家の在庫がなくダウングレード不可です");
+                    supply.houses -= 4; supply.hotels++; 
+                } else { supply.houses++; }
+                prop.houses--;
+                addLog(`🔨 <b>${prop.name}</b> の建物を売却 (+$${prop.housePrice / 2})`);
+            }
+            updateUI();
+        }
+
+        // --- UI更新 ---
+        function addLog(msg) {
+            const logArea = document.getElementById('log-area');
+            const time = new Date().toLocaleTimeString('ja-JP', { hour12: false });
+            logArea.insertAdjacentHTML('afterbegin', `<div class="log-entry">[${time}] ${msg}</div>`);
+        }
+
+        function updateUI() {
+            document.getElementById('supplyHouses').innerText = supply.houses;
+            document.getElementById('supplyHotels').innerText = supply.hotels;
+
+            const playerOpts = players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            
+            // 競売・購入用
+            const unownedProps = properties.filter(p => !p.owner).map(p => `<option value="${p.id}">${p.name} (定価$${p.price})</option>`).join('');
+            document.getElementById('auctionPropSelect').innerHTML = unownedProps || '<option value="">すべて売却済み</option>';
+            document.getElementById('auctionWinnerSelect').innerHTML = '<option value="">購入・落札者...</option>' + playerOpts;
+
+            // 送金用
+            const updateSelect = (id, baseHtml) => {
+                const sel = document.getElementById(id);
+                const val = sel.value;
+                sel.innerHTML = baseHtml + playerOpts;
+                if (sel.querySelector(`[value="${val}"]`)) sel.value = val;
+            };
+            updateSelect('fromPlayer', '<option value="bank">🏦 銀行</option>');
+            updateSelect('toPlayer', '<option value="bank">🏦 銀行</option>');
+            updateSelect('tradeToSelect', '<option value="">譲渡先...</option>');
+            updateSelect('jailTradeFrom', '<option value="">渡す人...</option>');
+            updateSelect('jailTradeTo', '<option value="">受け取る人...</option>');
+
+            // 物件譲渡用
+            const ownedProps = properties.filter(p => p.owner).map(p => `<option value="${p.id}">${p.name} (${players.find(pl=>pl.id==p.owner).name})</option>`).join('');
+            document.getElementById('tradePropSelect').innerHTML = ownedProps || '<option value="">物件がありません</option>';
+
+            // プレイヤーカード描画
+            const container = document.getElementById('playersContainer');
+            container.innerHTML = '';
+            players.forEach(p => {
+                const myProps = properties.filter(prop => prop.owner == p.id);
+                let propsHtml = myProps.map(prop => {
+                    let badge = prop.type === 'color' ? `<span class="prop-color" style="background-color: ${prop.color};"></span>` : prop.type === 'railroad' ? `🚂 ` : `💡 `;
+                    let statusClass = prop.mortgaged ? 'prop-mortgaged' : '';
+                    let buildings = '';
+                    if (prop.type === 'color') {
+                        if (prop.houses > 0 && prop.houses < 5) buildings = '🏠'.repeat(prop.houses);
+                        if (prop.houses === 5) buildings = '🏨';
+                        buildings = `<span style="color:#e67e22; font-size:10px;">${buildings}</span>`;
+                    }
+                    let btnHtml = `<button class="btn-small ${prop.mortgaged ? 'btn-red' : 'btn-gray'}" onclick="toggleMortgage('${prop.id}')">抵当</button>`;
+                    if (prop.type === 'color') {
+                        btnHtml += ` <button class="btn-small" onclick="buildHouse('${prop.id}', true)">家+</button>`;
+                        btnHtml += ` <button class="btn-small btn-red" onclick="buildHouse('${prop.id}', false)">家-</button>`;
+                    }
+                    // ★タップでポップアップを開くように修正
+                    return `
+                    <div class="prop-item ${statusClass}">
+                        <div style="cursor:pointer; flex-grow:1; text-decoration: underline; text-underline-offset: 3px;" onclick="showPropertyCard('${prop.id}')">
+                            ${badge}${prop.name} ${buildings}
+                        </div>
+                        <div class="prop-controls">${btnHtml}</div>
+                    </div>`;
+                }).join('');
+
+                container.innerHTML += `
+                    <div class="player-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <b>${p.name}</b>
+                            <span style="font-size:11px; background:#eee; padding:2px 5px; border-radius:4px;">
+                                釈放証: ${p.jailCards} 
+                                <button onclick="manageJailCard(${p.id}, 1)" style="padding:1px 4px;">+</button>
+                                <button onclick="manageJailCard(${p.id}, -1)" style="padding:1px 4px;" class="btn-red">-</button>
+                            </span>
+                        </div>
+                        <div class="balance">$${p.balance}</div>
+                        <button onclick="passGo(${p.id})" style="width:100%; margin-bottom:5px; background-color:#28a745;">+ $200 (GO通過)</button>
+                        <div class="property-list">
+                            ${propsHtml || '<span style="color:#999; font-size:12px;">所有物件なし</span>'}
+                        </div>
+                    </div>
+                `;
+            });
+
+            saveState(); 
+        }
+
+        // --- アプリ初期化 ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            updateUI();
+        });
+
+        // Service Workerの登録
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => { console.log('ServiceWorker 登録成功'); })
+                    .catch(error => { console.log('ServiceWorker 登録失敗'); });
+            });
+        }
+    </script>
+</body>
+</html>
