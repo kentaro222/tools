@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QRコードエディター</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        :root { --primary: #4a90e2; --success: #2ecc71; --bg: #f0f2f5; }
+        body { font-family: sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 20px; }
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 450px; text-align: center; }
+        h1 { margin-bottom: 20px; color: #333; font-size: 1.4rem; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        label { display: block; font-size: 0.85rem; color: #666; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; outline: none; transition: border-color 0.3s; }
+        input:focus { border-color: var(--primary); }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; transition: transform 0.1s, opacity 0.3s; margin-top: 10px; }
+        .btn:active { transform: scale(0.98); }
+        .btn-gen { background: var(--primary); color: white; }
+        .btn-down { background: var(--success); color: white; margin-top: 20px; display: none; }
+        #qr-result { margin-top: 25px; min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fafafa; border-radius: 10px; border: 1px dashed #ccc; }
+        canvas { max-width: 100%; height: auto !important; border-radius: 5px; }
+        .info-text { font-size: 0.8rem; color: #888; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>QRコード生成 & 保存</h1>
+    
+    <div class="input-group">
+        <label>URL / テキスト</label>
+        <input type="text" id="urlInput" placeholder="https://example.com" oninput="suggestName()">
+    </div>
+
+    <div class="input-group">
+        <label>保存するファイル名</label>
+        <input type="text" id="fileNameInput" placeholder="名前を入力">
+    </div>
+
+    <button onclick="generateQR()" class="btn btn-gen">QRコードを作成</button>
+
+    <div id="qr-result">
+        <p style="color: #bbb;">ここにプレビューが表示されます</p>
+    </div>
+
+    <button id="downloadBtn" onclick="downloadQR()" class="btn btn-down">PNG画像をダウンロード</button>
+    <p class="info-text">※連続で別のURLを入力しても、その都度更新されます。</p>
+</div>
+
+<script>
+    const urlInput = document.getElementById('urlInput');
+    const fileNameInput = document.getElementById('fileNameInput');
+    const qrResult = document.getElementById('qr-result');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    // URLからファイル名を自動提案する機能
+    function suggestName() {
+        if (!fileNameInput.value || fileNameInput.dataset.auto === "true") {
+            try {
+                const url = new URL(urlInput.value);
+                fileNameInput.value = url.hostname.replace('www.', '');
+                fileNameInput.dataset.auto = "true";
+            } catch (e) {
+                // 有効なURLでない場合は何もしない
+            }
+        }
+    }
+
+    // QRコード生成
+    async function generateQR() {
+        const text = urlInput.value.trim();
+        if (!text) {
+            alert("URLを入力してください");
+            return;
+        }
+
+        qrResult.innerHTML = ""; // 以前の出力を完全にクリア
+
+        // 新しいCanvas要素を作成
+        const canvas = document.createElement('canvas');
+        
+        try {
+            // ライブラリを使用して描画
+            await QRCode.toCanvas(canvas, text, {
+                width: 300,
+                margin: 2,
+                errorCorrectionLevel: 'H',
+                color: {
+                    dark: "#000000",
+                    light: "#ffffff"
+                }
+            });
+
+            qrResult.appendChild(canvas);
+            downloadBtn.style.display = "block";
+            
+            // ファイル名が空ならデフォルト値をセット
+            if (!fileNameInput.value) {
+                fileNameInput.value = "qrcode_" + Date.now().toString().slice(-6);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("エラーが発生しました: " + err.message);
+        }
+    }
+
+    // ダウンロード処理
+    function downloadQR() {
+        const canvas = qrResult.querySelector('canvas');
+        if (!canvas) return;
+
+        const fileName = fileNameInput.value || 'qrcode';
+        const link = document.createElement('a');
+        link.download = `${fileName}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+    }
+</script>
+
+</body>
+</html>
