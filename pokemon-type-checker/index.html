@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ポケモン攻守タイプチェッカー</title>
+    <style>
+        :root { --bg-color: #f0f2f5; --card-bg: #ffffff; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-color); padding: 20px; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+        
+        .card { background: var(--card-bg); padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .card h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; display: flex; align-items: center; }
+        .icon { margin-right: 8px; font-size: 1.4rem; }
+        
+        select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 1rem; background: #fff; cursor: pointer; }
+        .row { display: flex; gap: 10px; }
+        .col { flex: 1; }
+
+        .result-area { margin-top: 15px; min-height: 40px; }
+        .effectiveness-group { margin-bottom: 12px; }
+        .effectiveness-label { font-size: 0.85rem; color: #666; font-weight: bold; margin-bottom: 4px; display: block; }
+        
+        .type-badge { display: inline-block; padding: 4px 10px; border-radius: 4px; color: white; font-weight: bold; margin: 2px; font-size: 0.9rem; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+
+        /* タイプ別カラー */
+        .ノーマル { background-color: #A8A878; } .ほのお { background-color: #F08030; } .みず { background-color: #6890F0; }
+        .くさ { background-color: #78C850; } .でんき { background-color: #F8D030; } .こおり { background-color: #98D8D8; }
+        .かくとう { background-color: #C03028; } .どく { background-color: #A040A0; } .じめん { background-color: #E0C068; }
+        .ひこう { background-color: #A890F0; } .エスパー { background-color: #F85888; } .むし { background-color: #A8B820; }
+        .いわ { background-color: #B8A038; } .ゴースト { background-color: #705898; } .ドラゴン { background-color: #7038F8; }
+        .あく { background-color: #705848; } .はがね { background-color: #B8B8D0; } .フェアリー { background-color: #EE99AC; }
+
+        /* 早見表（テーブル）用スタイル */
+        .table-container { overflow-x: auto; margin-top: 10px; border-radius: 8px; border: 1px solid #eee; }
+        .matchup-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 0.85rem; white-space: nowrap; }
+        .matchup-table th, .matchup-table td { border: 1px solid #e0e0e0; padding: 6px; }
+        .matchup-table thead th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 1; color: #333; font-weight: bold; }
+        .matchup-table .atk-col { position: sticky; left: 0; z-index: 2; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.3); font-weight: bold; min-width: 70px;}
+        .matchup-table thead .atk-col { z-index: 3; background-color: #f8f9fa; color: #333; text-shadow: none; }
+        .eff-super { color: #e63946; font-weight: bold; font-size: 1.1rem; }
+        .eff-not { color: #457b9d; }
+        .eff-none { color: #888; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div class="card">
+        <h2 style="color: #e63946;"><span class="icon">⚔️</span> 攻撃チェッカー（技のタイプ）</h2>
+        <select id="attackType" onchange="calcAttack()">
+            <option value="">技のタイプを選択してください</option>
+        </select>
+        <div id="attackResult" class="result-area"></div>
+    </div>
+
+    <div class="card">
+        <h2 style="color: #457b9d;"><span class="icon">🛡️</span> 防御チェッカー（自分のタイプ）</h2>
+        <div class="row">
+            <div class="col">
+                <select id="defType1" onchange="calcDefense()">
+                    <option value="">タイプ1</option>
+                </select>
+            </div>
+            <div class="col">
+                <select id="defType2" onchange="calcDefense()">
+                    <option value="">タイプ2 (なし)</option>
+                </select>
+            </div>
+        </div>
+        <div id="defenseResult" class="result-area"></div>
+    </div>
+
+    <div class="card">
+        <h2 style="color: #2a9d8f;"><span class="icon">📊</span> タイプ相性早見表（攻撃側視点）</h2>
+        <p style="font-size: 0.8rem; color: #666; margin-bottom: 5px;">
+            ◎: 効果抜群(2倍) / △: 今ひとつ(0.5倍) / ×: 効果なし(0倍) / 空白: 通常(1倍)
+        </p>
+        <div class="table-container">
+            <table class="matchup-table" id="matchupTable"></table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+const types = ["ノーマル", "ほのお", "みず", "くさ", "でんき", "こおり", "かくとう", "どく", "じめん", "ひこう", "エスパー", "むし", "いわ", "ゴースト", "ドラゴン", "あく", "はがね", "フェアリー"];
+
+// 攻撃側から見た倍率表 (行:攻撃, 列:防御)
+const chart = {
+    "ノーマル": {"いわ": 0.5, "ゴースト": 0, "はがね": 0.5},
+    "ほのお": {"くさ": 2, "こおり": 2, "むし": 2, "はがね": 2, "ほのお": 0.5, "みず": 0.5, "いわ": 0.5, "ドラゴン": 0.5},
+    "みず": {"ほのお": 2, "じめん": 2, "いわ": 2, "みず": 0.5, "くさ": 0.5, "ドラゴン": 0.5},
+    "くさ": {"みず": 2, "じめん": 2, "いわ": 2, "ほのお": 0.5, "くさ": 0.5, "どく": 0.5, "ひこう": 0.5, "むし": 0.5, "ドラゴン": 0.5, "はがね": 0.5},
+    "でんき": {"みず": 2, "ひこう": 2, "くさ": 0.5, "でんき": 0.5, "ドラゴン": 0.5, "じめん": 0},
+    "こおり": {"くさ": 2, "じめん": 2, "ひこう": 2, "ドラゴン": 2, "ほのお": 0.5, "みず": 0.5, "こおり": 0.5, "はがね": 0.5},
+    "かくとう": {"ノーマル": 2, "こおり": 2, "いわ": 2, "あく": 2, "はがね": 2, "どく": 0.5, "ひこう": 0.5, "エスパー": 0.5, "むし": 0.5, "フェアリー": 0.5, "ゴースト": 0},
+    "どく": {"くさ": 2, "フェアリー": 2, "どく": 0.5, "じめん": 0.5, "いわ": 0.5, "ゴースト": 0.5, "はがね": 0},
+    "じめん": {"ほのお": 2, "でんき": 2, "どく": 2, "いわ": 2, "はがね": 2, "くさ": 0.5, "むし": 0.5, "ひこう": 0},
+    "ひこう": {"くさ": 2, "かくとう": 2, "むし": 2, "でんき": 0.5, "いわ": 0.5, "はがね": 0.5},
+    "エスパー": {"かくとう": 2, "どく": 2, "エスパー": 0.5, "はがね": 0.5, "あく": 0},
+    "むし": {"くさ": 2, "エスパー": 2, "あく": 2, "ほのお": 0.5, "かくとう": 0.5, "どく": 0.5, "ひこう": 0.5, "ゴースト": 0.5, "はがね": 0.5, "フェアリー": 0.5},
+    "いわ": {"ほのお": 2, "こおり": 2, "ひこう": 2, "むし": 2, "かくとう": 0.5, "じめん": 0.5, "はがね": 0.5},
+    "ゴースト": {"エスパー": 2, "ゴースト": 2, "あく": 0.5, "ノーマル": 0},
+    "ドラゴン": {"ドラゴン": 2, "はがね": 0.5, "フェアリー": 0},
+    "あく": {"エスパー": 2, "ゴースト": 2, "かくとう": 0.5, "あく": 0.5, "フェアリー": 0.5},
+    "はがね": {"こおり": 2, "いわ": 2, "フェアリー": 2, "ほのお": 0.5, "みず": 0.5, "でんき": 0.5, "はがね": 0.5},
+    "フェアリー": {"かくとう": 2, "ドラゴン": 2, "あく": 2, "ほのお": 0.5, "どく": 0.5, "はがね": 0.5}
+};
+
+// セレクトボックス初期化
+const selects = [document.getElementById('attackType'), document.getElementById('defType1'), document.getElementById('defType2')];
+selects.forEach(sel => {
+    types.forEach(t => sel.add(new Option(t, t)));
+});
+
+// HTML生成ヘルパー
+function generateBadgeHtml(label, typeList) {
+    if (typeList.length === 0) return '';
+    let html = `<div class="effectiveness-group"><span class="effectiveness-label">${label}</span>`;
+    typeList.forEach(t => html += `<span class="type-badge ${t}">${t}</span>`);
+    html += `</div>`;
+    return html;
+}
+
+// 攻撃計算
+function calcAttack() {
+    const atk = document.getElementById('attackType').value;
+    const resDiv = document.getElementById('attackResult');
+    if (!atk) { resDiv.innerHTML = ''; return; }
+
+    const groups = { "効果は抜群 (2倍)": [], "今ひとつ (0.5倍)": [], "効果なし (0倍)": [] };
+
+    types.forEach(def => {
+        let rate = chart[atk][def] !== undefined ? chart[atk][def] : 1;
+        if (rate === 2) groups["効果は抜群 (2倍)"].push(def);
+        if (rate === 0.5) groups["今ひとつ (0.5倍)"].push(def);
+        if (rate === 0) groups["効果なし (0倍)"].push(def);
+    });
+
+    let html = '';
+    html += generateBadgeHtml("これらのタイプに効く！ (×2)", groups["効果は抜群 (2倍)"]);
+    html += generateBadgeHtml("効きにくい (×0.5)", groups["今ひとつ (0.5倍)"]);
+    html += generateBadgeHtml("無効 (×0)", groups["効果なし (0倍)"]);
+    
+    resDiv.innerHTML = html || '<div style="color:#888;">全てのタイプに等倍です</div>';
+}
+
+// 防御計算
+function calcDefense() {
+    const t1 = document.getElementById('defType1').value;
+    const t2 = document.getElementById('defType2').value;
+    const resDiv = document.getElementById('defenseResult');
+    if (!t1) { resDiv.innerHTML = ''; return; }
+
+    let multipliers = {};
+    types.forEach(t => multipliers[t] = 1);
+
+    // t1の相性
+    for (let atk in chart) {
+        if (chart[atk][t1] !== undefined) multipliers[atk] *= chart[atk][t1];
+    }
+    // t2の相性
+    if (t2 && t1 !== t2) {
+        for (let atk in chart) {
+            if (chart[atk][t2] !== undefined) multipliers[atk] *= chart[atk][t2];
+        }
+    }
+
+    const groups = { "4倍": [], "2倍": [], "0.5倍": [], "0.25倍": [], "0倍": [] };
+    for (let atk in multipliers) {
+        let val = multipliers[atk];
+        if (val === 4) groups["4倍"].push(atk);
+        else if (val === 2) groups["2倍"].push(atk);
+        else if (val === 0.5) groups["0.5倍"].push(atk);
+        else if (val === 0.25) groups["0.25倍"].push(atk);
+        else if (val === 0) groups["0倍"].push(atk);
+    }
+
+    let html = '';
+    html += generateBadgeHtml("これが弱点！注意！ (×4)", groups["4倍"]);
+    html += generateBadgeHtml("弱点 (×2)", groups["2倍"]);
+    html += generateBadgeHtml("無効化できる (×0)", groups["0倍"]);
+    html += generateBadgeHtml("耐性あり (×0.5)", groups["0.5倍"]);
+    html += generateBadgeHtml("超耐性 (×0.25)", groups["0.25倍"]);
+
+    resDiv.innerHTML = html || '<div style="color:#888;">弱点も耐性もありません</div>';
+}
+
+// 追加：早見表の自動生成
+function renderMatchupTable() {
+    const table = document.getElementById('matchupTable');
+    let html = '<thead><tr><th class="atk-col">攻撃＼防御</th>';
+    
+    // ヘッダー行（防御側）
+    types.forEach(def => {
+        html += `<th>${def}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+
+    // データ行（攻撃側）
+    types.forEach(atk => {
+        // 左端の列にタイプごとの背景色クラスを適用
+        html += `<tr><td class="atk-col ${atk}">${atk}</td>`;
+        types.forEach(def => {
+            let rate = chart[atk][def] !== undefined ? chart[atk][def] : 1;
+            if (rate === 2) {
+                html += `<td class="eff-super" title="${atk}→${def}: ばつぐん(2倍)">◎</td>`;
+            } else if (rate === 0.5) {
+                html += `<td class="eff-not" title="${atk}→${def}: いまひとつ(0.5倍)">△</td>`;
+            } else if (rate === 0) {
+                html += `<td class="eff-none" title="${atk}→${def}: こうかがない(0倍)">×</td>`;
+            } else {
+                html += `<td></td>`;
+            }
+        });
+        html += '</tr>';
+    });
+    html += '</tbody>';
+    table.innerHTML = html;
+}
+
+// 初回読み込み時に実行
+renderMatchupTable();
+
+</script>
+</body>
+</html>
