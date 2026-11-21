@@ -6,8 +6,6 @@
 <title>Smart Band 9 Active Background Maker Ver.1.0</title>
 <style>
 :root{
-  --band-w:172px;
-  --band-h:320px;
   --bg:#1a1a1a;
   --panel:#2d2d2d;
   --panel2:#242424;
@@ -37,9 +35,7 @@ h1{
   max-width:980px;
   margin:0 auto;
   display:grid;
-  grid-template-columns:minmax(280px,360px) minmax(300px,1fr);
   gap:18px;
-  align-items:start;
 }
 .card{
   background:var(--panel);
@@ -47,29 +43,34 @@ h1{
   border-radius:14px;
   padding:16px;
 }
-.top-settings{
-  grid-column:1 / -1;
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:14px;
+.upload-card{
+  min-width:0;
 }
-.preview-card{
-  display:flex;
-  flex-direction:column;
-  gap:14px;
+.editor{
+  display:grid;
+  grid-template-columns:minmax(216px, 1fr) minmax(0, 2fr);
+  align-items:start;
+  gap:18px;
 }
 .preview-wrap{
+  position:sticky;
+  top:12px;
+  z-index:1;
   display:flex;
   justify-content:center;
+  padding:10px;
+  background:var(--bg);
 }
 .watch-frame{
-  width:var(--band-w);
-  height:var(--band-h);
+  height:320px;
+  height:clamp(120px, 76svh, 320px);
+  aspect-ratio:172 / 320;
+  min-width:0;
   border:12px solid #333;
   border-radius:24px;
   overflow:hidden;
   background:#000;
-  box-shadow:0 0 28px rgba(0,0,0,.55);
+  box-shadow:0 0 12px rgba(0,0,0,.55);
   cursor:default;
   touch-action:auto;
   user-select:none;
@@ -90,6 +91,15 @@ canvas{display:block;width:100%;height:100%}
   display:flex;
   flex-direction:column;
   gap:12px;
+}
+.settings input[type=range]{
+  min-height:36px;
+  touch-action:pan-y;
+}
+#rotation{
+  width:6.5em;
+  font-size:16px;
+  padding:5px 8px;
 }
 .control-group{
   display:flex;
@@ -119,7 +129,7 @@ label{
   font-variant-numeric:tabular-nums;
 }
 input[type=range]{width:100%;margin:0}
-input[type=file],input[type=text],select,input[type=color]{
+input[type=file],input[type=text],input[type=number],select,input[type=color]{
   width:100%;
   padding:9px 10px;
   border-radius:8px;
@@ -151,9 +161,6 @@ button.active{
   grid-template-columns:1fr 1fr;
   gap:8px;
 }
-.button-row.three{
-  grid-template-columns:1fr 1fr 1fr;
-}
 .status{
   text-align:center;
   padding:7px 10px;
@@ -183,6 +190,23 @@ button.active{
   flex-direction:column;
   gap:14px;
 }
+.settings details{
+  border:1px solid var(--border);
+  border-radius:9px;
+  background:var(--panel2);
+}
+.settings summary{
+  padding:12px;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+}
+.detail-controls{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:0 12px 12px;
+}
 .toggle-row{
   display:flex;
   justify-content:space-between;
@@ -206,10 +230,23 @@ button.active{
   line-height:1.5;
 }
 @media(max-width:760px){
-  .app{grid-template-columns:1fr}
-  .top-settings{
-    grid-column:auto;
-    grid-template-columns:1fr;
+  html{
+    scroll-padding-top:224px;
+    scroll-padding-top:calc(clamp(110px, 32svh, 250px) + 24px);
+  }
+  body{padding:12px}
+  .app{gap:8px}
+  .editor{display:block}
+  .preview-wrap{
+    top:0;
+    padding:8px;
+    box-shadow:0 2px 6px rgba(0,0,0,.35);
+  }
+  .watch-frame{
+    height:200px;
+    height:clamp(110px, 32svh, 250px);
+    border-width:7px;
+    border-radius:16px;
   }
   .card{padding:14px}
 }
@@ -218,141 +255,157 @@ button.active{
 <body>
 <h1>Xiaomi Smart Band 9 Active<br>Background Maker Ver.3</h1>
 
-<div class="app">
-
-  <section class="card top-settings">
+<main class="app">
+  <section class="card upload-card">
     <div class="control-group">
       <label for="upload">画像を選択</label>
       <input type="file" id="upload" accept="image/*">
     </div>
-
-    <div class="control-group">
-      <label for="maskType">黒マスクの位置</label>
-      <select id="maskType">
-        <option value="bottom">下を暗く</option>
-        <option value="top">上を暗く</option>
-        <option value="both">上下を暗く</option>
-        <option value="full" selected>全体を暗く</option>
-        <option value="none">マスクなし</option>
-      </select>
-    </div>
-
-    <div class="control-group">
-      <div class="control-header">
-        <label for="opacity">黒マスクの濃さ</label>
-        <span class="value" id="opacityVal">20</span>
-      </div>
-      <input type="range" id="opacity" min="0" max="100" step="1" value="20">
-    </div>
   </section>
 
-  <section class="card preview-card">
+  <section class="editor" aria-label="画像編集">
     <div class="preview-wrap">
       <div class="watch-frame" id="frame">
         <canvas id="canvas" width="172" height="320"></canvas>
       </div>
     </div>
 
-    <div class="quick-controls">
-      <button id="moveToggleBtn" class="orange" type="button">位置調整を開始</button>
-      <div id="moveStatus" class="status">位置調整ロック中</div>
-
-      <div class="control-group">
-        <div class="control-header">
-          <label for="scale">拡大・縮小</label>
-          <span class="value" id="scaleVal">0</span>
+    <div class="card settings">
+      <div class="quick-controls">
+        <div class="control-group">
+          <div class="control-header">
+            <label for="rotation">回転角度（°）</label>
+            <input type="number" id="rotation" value="0" step="any" aria-describedby="rotationHelp" disabled>
+          </div>
+          <input type="range" id="rotationSlider" min="-180" max="180" step="any" value="0" aria-label="回転角度（°）のスライダー" aria-describedby="rotationHelp" disabled>
+          <div class="help" id="rotationHelp">左で反時計回り、右で時計回り。細かい調整は数値欄に小数で入力できます。</div>
         </div>
-        <input type="range" id="scale" min="-100" max="100" step="1" value="0" disabled>
-        <div class="help">左で縮小、右で拡大。0が基準サイズです。</div>
+        <div class="control-group">
+          <div class="control-header">
+            <label for="scale">拡大・縮小</label>
+            <span class="value" id="scaleVal">0</span>
+          </div>
+          <input type="range" id="scale" min="-100" max="100" step="1" value="0" disabled>
+        </div>
       </div>
 
-      <div class="control-group">
-        <label>中央合わせ</label>
-        <div class="button-row">
-          <button id="centerXBtn" type="button" class="secondary">左右だけ中央</button>
-          <button id="centerYBtn" type="button" class="secondary">上下だけ中央</button>
+      <details id="positionSettings">
+        <summary>画像の位置</summary>
+        <div class="detail-controls">
+          <button id="moveToggleBtn" class="orange" type="button">位置調整を開始</button>
+          <div id="moveStatus" class="status">位置調整ロック中</div>
+
+          <div class="control-group">
+            <label>中央合わせ</label>
+            <div class="button-row">
+              <button id="centerXBtn" type="button" class="secondary">左右だけ中央</button>
+              <button id="centerYBtn" type="button" class="secondary">上下だけ中央</button>
+            </div>
+            <button id="centerBtn" type="button" class="secondary">完全に中央</button>
+          </div>
+          <div class="help">位置調整を開始すると、プレビュー上で画像をドラッグできます。</div>
         </div>
-        <button id="centerBtn" type="button" class="secondary">完全に中央</button>
+      </details>
+      <details>
+        <summary>表示モード・余白の色</summary>
+        <div class="detail-controls">
+          <div class="control-group">
+            <label>表示モード</label>
+            <div class="button-row">
+              <button id="containBtn" type="button" class="secondary">全体表示</button>
+              <button id="coverBtn" type="button">画面を埋める</button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="bgPreset">余白の色</label>
+            <div class="color-row">
+              <select id="bgPreset">
+                <option value="#000000" selected>黒</option>
+                <option value="#ffffff">白</option>
+                <option value="#808080">グレー</option>
+                <option value="custom">カスタム</option>
+              </select>
+              <input type="color" id="bgColor" value="#000000" aria-label="余白のカスタム色">
+            </div>
+            <div class="help">回転などで画像がない部分に適用されます。指定した色のまま使う場合は「マスクなし」を選んでください。</div>
+          </div>
+
+          <div class="button-row">
+            <button id="resetImageBtn" type="button" class="secondary">画像調整をリセット</button>
+            <button id="resetAllBtn" type="button" class="secondary">全部リセット</button>
+          </div>
+        </div>
+      </details>
+      <details>
+        <summary>黒マスク</summary>
+        <div class="detail-controls">
+          <div class="control-group">
+            <label for="maskType">黒マスクの位置</label>
+            <select id="maskType">
+              <option value="bottom">下を暗く</option>
+              <option value="top">上を暗く</option>
+              <option value="both">上下を暗く</option>
+              <option value="full" selected>全体を暗く</option>
+              <option value="none">マスクなし</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <label for="opacity">黒マスクの濃さ</label>
+              <span class="value" id="opacityVal">20</span>
+            </div>
+            <input type="range" id="opacity" min="0" max="100" step="1" value="20">
+          </div>
+        </div>
+      </details>
+      <details>
+        <summary>時計プレビュー</summary>
+        <div class="detail-controls">
+          <div class="toggle-row">
+            <label for="clockVisible">時計を表示</label>
+            <input type="checkbox" id="clockVisible" checked>
+          </div>
+
+          <div class="control-group">
+            <label for="clockColor">時計の文字色</label>
+            <select id="clockColor">
+              <option value="#ffffff" selected>白</option>
+              <option value="#000000">黒</option>
+              <option value="#bdbdbd">グレー</option>
+              <option value="#ff3b30">赤</option>
+              <option value="#ffcc00">黄</option>
+              <option value="#34c759">緑</option>
+              <option value="#0a84ff">青</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <label for="clockY">時計の上下位置</label>
+              <span class="value" id="clockYVal">30</span>
+            </div>
+            <input type="range" id="clockY" min="-90" max="90" step="1" value="30">
+            <div class="help">上 ←　→ 下　※この位置は自動保存されます。</div>
+          </div>
+        </div>
+      </details>
+
+      <h2 class="section-title">保存</h2>
+      <div class="control-group">
+        <label for="filename">ファイル名</label>
+        <input type="text" id="filename" value="_sb9a">
       </div>
 
-      <div class="control-group">
-        <div class="control-header">
-          <label for="clockY">時計の上下位置</label>
-          <span class="value" id="clockYVal">30</span>
-        </div>
-        <input type="range" id="clockY" min="-90" max="90" step="1" value="30">
-        <div class="help">上 ←　→ 下　※この位置は自動保存されます。</div>
-      </div>
-
-      <div class="help">
-        通常時は画面をスクロールできます。位置調整を開始した時だけ、プレビュー上の画像をドラッグできます。
+      <button id="download" class="green" type="button">PNG形式で保存</button>
+      <div class="footer-note">
+        出力サイズ: 172 × 320 px<br>
+        時計プレビューは目安表示で、保存画像には含まれません。
       </div>
     </div>
   </section>
-
-  <section class="card settings">
-    <div class="section-title">画像設定</div>
-
-    <div class="control-group">
-      <label>表示モード</label>
-      <div class="button-row">
-        <button id="containBtn" type="button" class="secondary">全体表示</button>
-        <button id="coverBtn" type="button">画面を埋める</button>
-      </div>
-    </div>
-
-    <div class="control-group">
-      <label for="bgPreset">画像外の色</label>
-      <div class="color-row">
-        <select id="bgPreset">
-          <option value="#000000" selected>黒</option>
-          <option value="#ffffff">白</option>
-          <option value="#808080">グレー</option>
-          <option value="custom">カスタム</option>
-        </select>
-        <input type="color" id="bgColor" value="#000000" title="カスタム色">
-      </div>
-    </div>
-
-    <div class="button-row">
-      <button id="resetImageBtn" type="button" class="secondary">画像調整をリセット</button>
-      <button id="resetAllBtn" type="button" class="secondary">全部リセット</button>
-    </div>
-
-    <div class="section-title">時計プレビュー</div>
-
-    <div class="toggle-row">
-      <label for="clockVisible">時計を表示</label>
-      <input type="checkbox" id="clockVisible" checked>
-    </div>
-
-    <div class="control-group">
-      <label for="clockColor">時計の文字色</label>
-      <select id="clockColor">
-        <option value="#ffffff" selected>白</option>
-        <option value="#000000">黒</option>
-        <option value="#bdbdbd">グレー</option>
-        <option value="#ff3b30">赤</option>
-        <option value="#ffcc00">黄</option>
-        <option value="#34c759">緑</option>
-        <option value="#0a84ff">青</option>
-      </select>
-    </div>
-
-    <div class="section-title">保存</div>
-
-    <div class="control-group">
-      <label for="filename">ファイル名</label>
-      <input type="text" id="filename" value="_sb9a">
-    </div>
-
-    <button id="download" class="green" type="button">PNG形式で保存</button>
-    <div class="footer-note">
-      出力サイズ: 172 × 320 px<br>
-      時計プレビューは目安表示で、保存画像には含まれません。
-    </div>
-  </section>
-</div>
+</main>
 
 <script>
 const upload = document.getElementById('upload');
@@ -367,6 +420,7 @@ const opacityVal = document.getElementById('opacityVal');
 
 const moveToggleBtn = document.getElementById('moveToggleBtn');
 const moveStatus = document.getElementById('moveStatus');
+const positionSettings = document.getElementById('positionSettings');
 
 const containBtn = document.getElementById('containBtn');
 const coverBtn = document.getElementById('coverBtn');
@@ -378,6 +432,8 @@ const resetAllBtn = document.getElementById('resetAllBtn');
 
 const bgPreset = document.getElementById('bgPreset');
 const bgColor = document.getElementById('bgColor');
+const rotationInput = document.getElementById('rotation');
+const rotationSlider = document.getElementById('rotationSlider');
 
 const maskType = document.getElementById('maskType');
 
@@ -394,12 +450,11 @@ let img = null;
 let imgX = 0;
 let imgY = 0;
 let imgScale = 1;
-let baseScaleContain = 1;
-let baseScaleCover = 1;
+let rotationDegrees = 0;
 let currentFitMode = 'cover';
 
 let isMoveEnabled = false;
-let isDragging = false;
+let dragPointerId = null;
 let startDragX = 0;
 let startDragY = 0;
 
@@ -447,7 +502,7 @@ function updateMoveUI() {
     moveToggleBtn.textContent = '位置調整を開始';
     moveStatus.textContent = '位置調整ロック中';
     moveStatus.classList.remove('active');
-    isDragging = false;
+    dragPointerId = null;
   }
 }
 
@@ -457,6 +512,30 @@ function getZoomFactor(value) {
   return value < 0
     ? 1 + (value / 100) * 0.75
     : 1 + (value / 100) * 3;
+}
+
+function getRotationRadians() {
+  return rotationDegrees * Math.PI / 180;
+}
+
+function getImageScale() {
+  const rotation = getRotationRadians();
+  const cos = Math.abs(Math.cos(rotation));
+  const sin = Math.abs(Math.sin(rotation));
+  const rotatedWidth = img.width * cos + img.height * sin;
+  const rotatedHeight = img.width * sin + img.height * cos;
+  const widthRatio = canvas.width / rotatedWidth;
+  const heightRatio = canvas.height / rotatedHeight;
+  const base = currentFitMode === 'cover'
+    ? Math.max(widthRatio, heightRatio)
+    : Math.min(widthRatio, heightRatio);
+  return base * getZoomFactor(Number(scaleInput.value));
+}
+
+function resetRotation() {
+  rotationDegrees = 0;
+  rotationInput.value = '0';
+  rotationSlider.value = '0';
 }
 
 function centerXOnly() {
@@ -484,9 +563,7 @@ function applyFit(mode, resetZoom = true) {
   currentFitMode = mode;
   if (resetZoom) scaleInput.value = 0;
 
-  const base = mode === 'cover' ? baseScaleCover : baseScaleContain;
-  const zoom = parseInt(scaleInput.value, 10);
-  imgScale = base * getZoomFactor(zoom);
+  imgScale = getImageScale();
 
   centerImage();
   scaleVal.textContent = scaleInput.value;
@@ -557,7 +634,13 @@ function render(isExport = false) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   if (img) {
-    ctx.drawImage(img, imgX, imgY, img.width * imgScale, img.height * imgScale);
+    const width = img.width * imgScale;
+    const height = img.height * imgScale;
+    ctx.save();
+    ctx.translate(imgX + width / 2, imgY + height / 2);
+    ctx.rotate(getRotationRadians());
+    ctx.drawImage(img, -width / 2, -height / 2, width, height);
+    ctx.restore();
   } else {
     ctx.fillStyle = '#222';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -570,7 +653,7 @@ function render(isExport = false) {
 
   drawMask();
 
-  if (!isExport) {
+  if (isExport !== true) {
     drawClockPreview();
   }
 }
@@ -584,10 +667,11 @@ upload.addEventListener('change', e => {
     const newImg = new Image();
     newImg.onload = () => {
       img = newImg;
-      baseScaleContain = Math.min(canvas.width / img.width, canvas.height / img.height);
-      baseScaleCover = Math.max(canvas.width / img.width, canvas.height / img.height);
 
       scaleInput.disabled = false;
+      rotationInput.disabled = false;
+      rotationSlider.disabled = false;
+      resetRotation();
       currentFitMode = 'cover';
       scaleInput.value = 0;
 
@@ -599,13 +683,39 @@ upload.addEventListener('change', e => {
   reader.readAsDataURL(file);
 });
 
+function updateRotation(degrees) {
+  if (!img || !Number.isFinite(degrees)) return;
+
+  const oldScale = imgScale;
+  let angle = degrees % 360;
+  if (angle > 180) angle -= 360;
+  if (angle < -180) angle += 360;
+  rotationDegrees = angle;
+  rotationSlider.value = String(angle);
+  imgScale = getImageScale();
+  imgX += img.width * (oldScale - imgScale) / 2;
+  imgY += img.height * (oldScale - imgScale) / 2;
+  render();
+}
+
+rotationInput.addEventListener('input', () => {
+  updateRotation(rotationInput.valueAsNumber);
+});
+
+rotationInput.addEventListener('blur', () => {
+  rotationInput.value = String(rotationDegrees);
+});
+
+rotationSlider.addEventListener('input', () => {
+  updateRotation(Math.round(rotationSlider.valueAsNumber));
+  rotationInput.value = String(rotationDegrees);
+});
+
 scaleInput.addEventListener('input', () => {
   if (!img) return;
 
   const oldScale = imgScale;
-  const base = currentFitMode === 'cover' ? baseScaleCover : baseScaleContain;
-  const zoom = parseInt(scaleInput.value, 10);
-  imgScale = base * getZoomFactor(zoom);
+  imgScale = getImageScale();
 
   const ratio = imgScale / oldScale;
   const cx = canvas.width / 2;
@@ -628,44 +738,39 @@ moveToggleBtn.addEventListener('click', () => {
   updateMoveUI();
 });
 
-frame.addEventListener('mousedown', e => {
-  if (!img || !isMoveEnabled) return;
-  isDragging = true;
-  startDragX = e.clientX - imgX;
-  startDragY = e.clientY - imgY;
+positionSettings.addEventListener('toggle', () => {
+  if (positionSettings.open || !isMoveEnabled) return;
+  isMoveEnabled = false;
+  updateMoveUI();
 });
 
-window.addEventListener('mousemove', e => {
-  if (!isDragging || !isMoveEnabled) return;
-  imgX = e.clientX - startDragX;
-  imgY = e.clientY - startDragY;
+function getCanvasPoint(event) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (event.clientX - rect.left) * canvas.width / rect.width,
+    y: (event.clientY - rect.top) * canvas.height / rect.height
+  };
+}
+
+frame.addEventListener('pointerdown', event => {
+  if (!img || !isMoveEnabled || dragPointerId !== null || event.button !== 0) return;
+  const point = getCanvasPoint(event);
+  dragPointerId = event.pointerId;
+  startDragX = point.x - imgX;
+  startDragY = point.y - imgY;
+  frame.setPointerCapture(event.pointerId);
+});
+
+frame.addEventListener('pointermove', event => {
+  if (event.pointerId !== dragPointerId) return;
+  const point = getCanvasPoint(event);
+  imgX = point.x - startDragX;
+  imgY = point.y - startDragY;
   render();
 });
 
-window.addEventListener('mouseup', () => {
-  isDragging = false;
-});
-
-frame.addEventListener('touchstart', e => {
-  if (!img || !isMoveEnabled) return;
-  const touch = e.touches[0];
-  isDragging = true;
-  startDragX = touch.clientX - imgX;
-  startDragY = touch.clientY - imgY;
-  e.preventDefault();
-}, { passive:false });
-
-window.addEventListener('touchmove', e => {
-  if (!isDragging || !isMoveEnabled) return;
-  const touch = e.touches[0];
-  imgX = touch.clientX - startDragX;
-  imgY = touch.clientY - startDragY;
-  render();
-  e.preventDefault();
-}, { passive:false });
-
-window.addEventListener('touchend', () => {
-  isDragging = false;
+frame.addEventListener('lostpointercapture', event => {
+  if (event.pointerId === dragPointerId) dragPointerId = null;
 });
 
 containBtn.addEventListener('click', () => {
@@ -686,6 +791,7 @@ centerBtn.addEventListener('click', centerImage);
 
 resetImageBtn.addEventListener('click', () => {
   if (!img) return;
+  resetRotation();
   currentFitMode = 'cover';
   scaleInput.value = 0;
   scaleVal.textContent = '0';
@@ -694,6 +800,7 @@ resetImageBtn.addEventListener('click', () => {
 });
 
 resetAllBtn.addEventListener('click', () => {
+  resetRotation();
   bgPreset.value = '#000000';
   bgColor.value = '#000000';
   maskType.value = 'full';
