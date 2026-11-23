@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>画像回転ツール</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f5f2eb;
+    --paper: #fffdf8;
+    --ink: #231c32;
+    --muted: #655e70;
+    --line: #e0d8e4;
+    --accent: #dff18d;
+    --plum: #30233e;
+    font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    color: var(--ink);
+    background: var(--page);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; }
+  main { max-width: 1120px; margin: auto; padding: 42px 32px; }
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 25px; }
+  .brand { display: grid; place-items: center; width: 49px; height: 49px; border-radius: 14px; background: var(--accent); font: 34px/1 system-ui; flex: none; }
+  h1 { margin: 0; font-size: clamp(25px, 4vw, 37px); letter-spacing: -.04em; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .preview { min-width: 0; background: var(--plum); border-radius: 24px; color: #fffdf8; overflow: hidden; }
+  .preview-top { display: flex; gap: 10px; justify-content: space-between; align-items: center; padding: 14px 16px 14px 20px; min-height: 73px; }
+  h2 { margin: 0; font-size: 15px; letter-spacing: .02em; }
+  .preview button { background: #493a59; border: 1px solid #6a587b; color: white; }
+  .stage { min-height: 370px; height: clamp(370px, 43vw, 495px); display: grid; place-items: center; padding: 18px; margin: 0 12px; border-radius: 15px; background-color: #392b48; background-image: radial-gradient(#695778 1px, transparent 1px); background-size: 15px 15px; }
+  .stage.dragging { outline: 3px solid var(--accent); outline-offset: -3px; }
+  canvas { display: block; max-width: 100%; max-height: 100%; object-fit: contain; min-width: 0; min-height: 0; }
+  .checker { background: repeating-conic-gradient(#e1dbe7 0% 25%, #fff 0% 50%) 0 0 / 16px 16px; }
+  .empty { text-align: center; }
+  .empty-art { position: relative; width: 126px; height: 100px; margin: 0 auto 15px; }
+  .empty-art::before, .empty-art::after { content: ""; position: absolute; top: 16px; left: 24px; width: 77px; height: 62px; border-radius: 10px; }
+  .empty-art::before { border: 1px dashed #bcadca; transform: rotate(-12deg); }
+  .empty-art::after { transform: rotate(15deg); border: 2px solid var(--accent); background: radial-gradient(circle at 72% 28%, var(--accent) 0 5px, transparent 6px), linear-gradient(137deg, transparent 51%, #78698b 52%) left bottom / 58% 72% no-repeat, linear-gradient(224deg, transparent 47%, #605271 48%) right bottom / 66% 59% no-repeat, #453551; }
+  .empty p { margin: 0; font-size: 14px; color: #e9dfef; }
+  .preview-bottom { min-height: 47px; padding: 12px 20px; color: #e1d5e9; font-size: 12px; overflow-wrap: anywhere; }
+  .controls { border-radius: 24px; border: 1px solid var(--line); background: var(--paper); padding: 0 20px; min-width: 0; }
+  section { padding: 17px 0; }
+  section + section { border-top: 1px solid var(--line); }
+  .line { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+  .number { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+  input, button { font: inherit; }
+  button { cursor: pointer; font-weight: 700; min-height: 44px; border: 1px solid var(--line); border-radius: 9px; padding: 7px 13px; background: var(--paper); color: var(--ink); font-size: 13px; }
+  button:hover:not(:disabled) { filter: brightness(.95); }
+  button:disabled { cursor: default; opacity: .55; }
+  :focus-visible { outline: 3px solid #8957c1; outline-offset: 3px; }
+  .preview :focus-visible { outline-color: var(--accent); }
+  input[type="number"], input[type="text"] { min-width: 0; width: 100%; min-height: 44px; background: #fff; border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; color: var(--ink); font-size: 16px; }
+  input[type="number"] { width: 87px; }
+  input[type="range"] { display: block; width: 100%; margin: 5px 0 0; height: 39px; accent-color: #61427e; cursor: pointer; }
+  .ticks { display: flex; justify-content: space-between; padding: 0 3px; font-size: 11px; color: var(--muted); }
+  .angle-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin-top: 12px; }
+  .choices { display: flex; gap: 7px; margin-top: 10px; }
+  .choices label, .color-picker { position: relative; display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; flex: 1; border: 1px solid var(--line); border-radius: 9px; padding: 6px; font-weight: 700; font-size: 13px; cursor: pointer; }
+  .choices label:has(:checked) { border-color: #624580; background: #f1eaf9; color: #432a5a; }
+  .choices label:focus-within, .color-picker:focus-within { outline: 3px solid #8957c1; outline-offset: 2px; }
+  .choices label:has(:disabled), .color-picker:has(:disabled) { opacity: .48; cursor: default; }
+  .choices input, .color-picker input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: inherit; }
+  .swatch { width: 18px; height: 18px; flex: none; border: 1px solid #bfb4c7; border-radius: 4px; background-color: var(--swatch, white); }
+  .hint { margin: 8px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .output { display: flex; gap: 7px; align-items: center; margin-top: 10px; }
+  #extension { padding-right: 2px; min-width: 34px; font-size: 13px; color: var(--muted); }
+  #download { width: 100%; margin-top: 12px; min-height: 49px; background: var(--accent); border-color: #c3d478; font-size: 15px; }
+  #status { margin: 10px 0 0; font-size: 13px; overflow-wrap: anywhere; }
+  #status:empty { display: none; }
+  #status.error { color: #9f203b; }
+  @media (max-width: 740px) {
+    main { max-width: 540px; padding: 20px 12px 28px; }
+    header { gap: 10px; margin-bottom: 14px; padding-left: 3px; }
+    .brand { width: 40px; height: 40px; font-size: 28px; border-radius: 11px; }
+    .layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .preview, .controls { border-radius: 17px; }
+    .stage { height: clamp(150px, 30vh, 310px); min-height: 0; margin: 0 8px; padding: 10px; }
+    .preview-top { min-height: 59px; padding: 7px 9px 7px 14px; }
+    .preview-bottom { padding: 8px 14px; min-height: 34px; }
+    .controls { padding: 0 13px; }
+    section { padding: 13px 0; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="brand" aria-hidden="true">↻</span>
+    <h1>画像回転ツール</h1>
+  </header>
+  <div class="layout">
+    <div class="preview">
+      <div class="preview-top">
+        <h2>プレビュー</h2>
+        <button type="button" id="choose">画像を選ぶ</button>
+        <input type="file" id="file" accept="image/*" hidden>
+      </div>
+      <div class="stage" id="stage">
+        <div class="empty" id="empty">
+          <div class="empty-art" aria-hidden="true"></div>
+          <p>画像を選ぶか、ここにドロップ</p>
+        </div>
+        <canvas id="preview" class="checker" role="img" aria-label="回転結果のプレビュー" hidden></canvas>
+      </div>
+      <div class="preview-bottom" id="details" aria-live="polite">画像の処理は端末内で行われます</div>
+    </div>
+    <div class="controls">
+      <section aria-labelledby="angle-title">
+        <div class="line">
+          <h2 id="angle-title">回転角度</h2>
+          <label class="number">
+            <input id="angle" type="number" min="-180" max="180" step="0.1" value="0" aria-label="回転角度（度）">
+            <span aria-hidden="true">°</span>
+          </label>
+        </div>
+        <input id="slider" type="range" min="-180" max="180" step="0.1" value="0" aria-label="回転角度のスライダー">
+        <div class="ticks" aria-hidden="true"><span>−180°</span><span>0°</span><span>+180°</span></div>
+        <div class="angle-actions">
+          <button type="button" id="left" aria-label="左に90度回転">↶ 90°</button>
+          <button type="button" id="reset">0° に戻す</button>
+          <button type="button" id="right" aria-label="右に90度回転">90° ↷</button>
+        </div>
+      </section>
+      <section aria-labelledby="background-title">
+        <h2 id="background-title">背景</h2>
+        <div class="choices" role="group" aria-labelledby="background-title">
+          <label><input type="radio" id="transparent" name="background" value="transparent" checked><span class="swatch checker" aria-hidden="true"></span>透過</label>
+          <label><input type="radio" id="solid" name="background" value="solid">単色</label>
+          <label class="color-picker" id="color-picker"><span class="swatch" aria-hidden="true"></span>色を選ぶ<input id="color" type="color" value="#ffffff" aria-label="背景色"></label>
+        </div>
+        <p class="hint" id="jpeg-note" hidden>JPEG では背景を単色で保存します。</p>
+      </section>
+      <section aria-labelledby="save-title">
+        <h2 id="save-title">書き出し</h2>
+        <div class="choices" role="group" aria-label="画像形式">
+          <label><input type="radio" id="png" name="format" value="png" checked>PNG</label>
+          <label><input type="radio" id="jpeg" name="format" value="jpeg">JPEG</label>
+        </div>
+        <div class="output">
+          <input id="filename" type="text" placeholder="ファイル名" aria-label="保存するファイル名" spellcheck="false">
+          <span id="extension">.png</span>
+        </div>
+        <button type="button" id="download" disabled>画像を保存 ↓</button>
+        <p id="status" role="status"></p>
+      </section>
+    </div>
+  </div>
+</main>
+<script>
+  "use strict";
+  const get = id => document.getElementById(id);
+  const file = get("file");
+  const stage = get("stage");
+  const preview = get("preview");
+  const angleInput = get("angle");
+  const slider = get("slider");
+  const transparent = get("transparent");
+  const solid = get("solid");
+  const color = get("color");
+  const jpeg = get("jpeg");
+  const filename = get("filename");
+  const download = get("download");
+  let image;
+  let angle = 0;
+  let loadVersion = 0;
+  let loading = false;
+  let saving = false;
+  let frame;
+  let suggestedName = "";
+  let preferTransparent = true;
+
+  function message(text, error = false) {
+    const status = get("status");
+    status.textContent = text;
+    status.classList.toggle("error", error);
+  }
+
+  function updateDownload() {
+    download.disabled = !image || loading || saving;
+  }
+
+  function geometry() {
+    const radians = angle * Math.PI / 180;
+    const cosine = Math.abs(Math.cos(radians));
+    const sine = Math.abs(Math.sin(radians));
+    const width = image.naturalWidth;
+    const height = image.naturalHeight;
+    // Round away floating-point residue at exact right angles.
+    return {
+      radians,
+      width: Math.ceil(width * cosine + height * sine - 1e-9),
+      height: Math.ceil(width * sine + height * cosine - 1e-9)
+    };
+  }
+
+  function render(canvas, bounds, width, height) {
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas unavailable");
+    if (!transparent.checked) {
+      context.fillStyle = color.value;
+      context.fillRect(0, 0, width, height);
+    }
+    context.imageSmoothingQuality = "high";
+    context.setTransform(width / bounds.width, 0, 0, height / bounds.height, width / 2, height / 2);
+    context.rotate(bounds.radians);
+    context.drawImage(image, -image.naturalWidth / 2, -image.naturalHeight / 2);
+  }
+
+  function schedulePreview() {
+    cancelAnimationFrame(frame);
+    if (!image) return;
+    frame = requestAnimationFrame(() => {
+      const bounds = geometry();
+      const style = getComputedStyle(stage);
+      const availableWidth = stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const availableHeight = stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      if (availableWidth <= 0 || availableHeight <= 0) return;
+      const scale = Math.min(availableWidth / bounds.width, availableHeight / bounds.height, 1);
+      const displayWidth = Math.max(1, bounds.width * scale);
+      const displayHeight = Math.max(1, bounds.height * scale);
+      const density = Math.min(window.devicePixelRatio || 1, 2);
+      preview.style.width = displayWidth + "px";
+      preview.style.height = displayHeight + "px";
+      render(preview, bounds, Math.round(displayWidth * density), Math.round(displayHeight * density));
+      get("details").textContent = bounds.width.toLocaleString("ja-JP") + " × " + bounds.height.toLocaleString("ja-JP") + " px";
+    });
+  }
+
+  function setAngle(value, updateNumber = true) {
+    angle = Math.round(Math.min(180, Math.max(-180, value)) * 10) / 10;
+    slider.value = angle;
+    if (updateNumber) angleInput.value = angle;
+    schedulePreview();
+  }
+
+  function turn(amount) {
+    const next = angle + amount;
+    setAngle(next > 180 ? next - 360 : next < -180 ? next + 360 : next);
+  }
+
+  async function loadImage(selected) {
+    if (!selected) return;
+    const version = ++loadVersion;
+    const objectUrl = URL.createObjectURL(selected);
+    loading = true;
+    updateDownload();
+    message("");
+    const next = new Image();
+    try {
+      next.src = objectUrl;
+      await next.decode();
+      if (!next.naturalWidth || !next.naturalHeight) throw new Error("Empty image");
+      if (version !== loadVersion) return;
+      image = next;
+      const nextName = selected.name.replace(/\.[^.]+$/, "") + "-rotated";
+      if (!filename.value.trim() || filename.value === suggestedName) filename.value = nextName;
+      suggestedName = nextName;
+      get("empty").hidden = true;
+      preview.hidden = false;
+      schedulePreview();
+    } catch {
+      if (version === loadVersion) message("画像を開けませんでした。この端末で表示できる画像を選んでください。", true);
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+      if (version === loadVersion) {
+        loading = false;
+        updateDownload();
+      }
+    }
+  }
+
+  function updateFormat() {
+    transparent.disabled = jpeg.checked;
+    transparent.checked = !jpeg.checked && preferTransparent;
+    solid.checked = !transparent.checked;
+    get("jpeg-note").hidden = !jpeg.checked;
+    get("extension").textContent = jpeg.checked ? ".jpg" : ".png";
+    schedulePreview();
+  }
+
+  get("choose").addEventListener("click", () => file.click());
+  file.addEventListener("change", () => {
+    loadImage(file.files[0]);
+    file.value = "";
+  });
+  stage.addEventListener("dragover", event => {
+    event.preventDefault();
+    stage.classList.add("dragging");
+  });
+  stage.addEventListener("dragleave", event => {
+    if (!stage.contains(event.relatedTarget)) stage.classList.remove("dragging");
+  });
+  stage.addEventListener("drop", event => {
+    event.preventDefault();
+    stage.classList.remove("dragging");
+    loadImage(event.dataTransfer.files[0]);
+  });
+  slider.addEventListener("input", () => setAngle(slider.valueAsNumber));
+  angleInput.addEventListener("input", () => {
+    if (Number.isFinite(angleInput.valueAsNumber)) setAngle(angleInput.valueAsNumber, false);
+  });
+  angleInput.addEventListener("blur", () => setAngle(angle));
+  angleInput.addEventListener("keydown", event => {
+    if (event.key === "Enter") angleInput.blur();
+  });
+  get("left").addEventListener("click", () => turn(-90));
+  get("right").addEventListener("click", () => turn(90));
+  get("reset").addEventListener("click", () => setAngle(0));
+  for (const option of [transparent, solid]) {
+    option.addEventListener("change", () => {
+      if (!jpeg.checked) preferTransparent = transparent.checked;
+      schedulePreview();
+    });
+  }
+  color.addEventListener("input", () => {
+    solid.checked = true;
+    if (!jpeg.checked) preferTransparent = false;
+    get("color-picker").style.setProperty("--swatch", color.value);
+    schedulePreview();
+  });
+  for (const option of [get("png"), jpeg]) option.addEventListener("change", updateFormat);
+  new ResizeObserver(schedulePreview).observe(stage);
+
+  download.addEventListener("click", async () => {
+    if (download.disabled) return;
+    saving = true;
+    updateDownload();
+    message("");
+    const canvas = document.createElement("canvas");
+    try {
+      const mime = jpeg.checked ? "image/jpeg" : "image/png";
+      const extension = jpeg.checked ? ".jpg" : ".png";
+      const name = filename.value.trim()
+        .replace(/\.(?:png|jpe?g)$/i, "")
+        .replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")
+        .replace(/[.\s]+$/g, "") || "rotated";
+      const bounds = geometry();
+      render(canvas, bounds, bounds.width, bounds.height);
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, mime, 0.94));
+      if (!blob || blob.type !== mime) throw new Error("Encoding failed");
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = name + extension;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch {
+      message("画像を保存できませんでした。画像のサイズを小さくして再度お試しください。", true);
+    } finally {
+      canvas.width = canvas.height = 1;
+      saving = false;
+      updateDownload();
+    }
+  });
+</script>
+</body>
+</html>
