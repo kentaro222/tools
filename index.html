@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard</title>
+<meta name="generator" content="Dashboard Builder 2.1">
+<meta name="theme-color" content="#0a0d12">
+<link rel="icon" href="./favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="./icons/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" sizes="180x180">
+<link rel="manifest" href="./manifest.webmanifest">
+<style>
+:root{--bg:#0a0d12;--panel:rgba(15,20,28,.58);--text:#f4f7fb;--muted:rgba(244,247,251,.62);--border:rgba(255,255,255,.09);--accent:#9ecbff;--radius:18px}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#090c10;color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI","Hiragino Sans",Meiryo,sans-serif}
+body{min-height:100vh;background:radial-gradient(circle at 20% 15%, #1e3550 0%, #101722 38%, #080b10 100%);background-size:cover;background-position:center;background-attachment:fixed}
+body:before{content:"";position:fixed;inset:0;background:linear-gradient(180deg,rgba(5,8,12,.28),rgba(5,8,12,.68));pointer-events:none;z-index:-1}
+button,input{font:inherit}button{color:inherit;cursor:pointer}
+.app{width:min(1180px,calc(100% - 32px));margin:auto;padding:28px 0 46px}
+.top{display:flex;justify-content:space-between;align-items:center}.weather{color:var(--muted);font-size:14px}
+.icon,.btn{border:1px solid var(--border);background:rgba(255,255,255,.055);border-radius:12px;padding:9px 11px;color:inherit}.icon{width:42px;height:42px}
+.hero{text-align:center;padding:34px 0 26px}.date{color:var(--muted);font-size:13px;letter-spacing:.15em}.clock{font-size:clamp(72px,13vw,150px);font-weight:200;letter-spacing:-.055em;font-variant-numeric:tabular-nums;line-height:.95;margin-top:10px}
+.searchw{max-width:720px;margin:28px auto 0}.search{width:100%;height:58px;border-radius:17px;border:1px solid var(--border);background:rgba(255,255,255,.07);color:white;outline:0;padding:0 18px}
+.layout{margin-top:28px}.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);backdrop-filter:blur(20px);box-shadow:0 18px 60px rgba(0,0,0,.28)}
+.links{padding:22px}.title{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.title h2{font-size:14px;margin:0}.title span{font-size:11px;color:var(--muted)}
+.cat+ .cat{margin-top:22px}.catlabel{font-size:11px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:9px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:10px}
+.link{min-height:48px;padding:10px 12px;border-radius:13px;background:rgba(255,255,255,.045);color:white;text-decoration:none;display:flex;align-items:center;gap:10px;border:1px solid transparent;transition:.2s ease}.link:hover{background:rgba(255,255,255,.085);transform:translateY(-1px)}.link.highlighted{background:color-mix(in srgb,var(--hl) 18%,rgba(255,255,255,.045));border-color:color-mix(in srgb,var(--hl) 48%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--hl) 12%,transparent) inset,0 10px 28px color-mix(in srgb,var(--hl) 14%,transparent)}.link.highlighted .dot{background:var(--hl);box-shadow:0 0 14px color-mix(in srgb,var(--hl) 65%,transparent)}.link{overflow-wrap:anywhere;min-width:0}.dot{flex-shrink:0;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.secret-export{
+  position:fixed;
+  right:10px;
+  bottom:10px;
+  width:26px;
+  height:26px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(10,13,18,.22);
+  color:rgba(255,255,255,.18);
+  border-radius:9px;
+  display:grid;
+  place-items:center;
+  font-size:11px;
+  opacity:.28;
+  transition:.2s ease;
+  z-index:50;
+  backdrop-filter:blur(8px);
+}
+.secret-export:hover,
+.secret-export:focus{
+  opacity:.95;
+  color:rgba(255,255,255,.85);
+  border-color:rgba(255,255,255,.18);
+  background:rgba(20,26,34,.72);
+}
+@media(max-width:820px){
+  .app{width:min(100% - 22px,720px)}
+  .secret-export{right:7px;bottom:7px;width:24px;height:24px}
+}
+</style>
+</head>
+<body>
+<main class="app">
+<div class="top"><div id="weather" class="weather" role="status">Weather...</div></div>
+<section class="hero"><div id="date" class="date"></div><div id="clock" class="clock">00:00</div><form id="searchForm" class="searchw"><input id="search" class="search" aria-label="ウェブ検索" placeholder="Search the web..." autocomplete="off"></form></section>
+<section class="layout">
+<div class="card links"><div class="title"><h2>Shortcuts</h2><span id="count"></span></div><div id="links"></div></div>
+</section>
+</main>
+
+<button id="secretExport" class="secret-export" type="button" title="Export index.html" aria-label="Export index.html">↓</button>
+
+<script id="dashboard-config" type="application/json">{"clock":{"locale":"ja-JP","showSeconds":false,"hour12":false},"weather":{"label":"東京","latitude":35.6809591,"longitude":139.7673068},"search":{"engine":"https://www.google.com/search?q="},"builder":{"outputFilename":"tools.html"},"linkGroups":[{"name":"Tool","links":[{"label":"おい森 図鑑","url":"https://kentaro222.github.io/tools/wild-world-encyclopedia/","highlight":false,"highlightColor":"#9ecbff"},{"label":"濃度計算","url":"https://kentaro222.github.io/tools/concentration-calculation/","highlight":false,"highlightColor":"#9ecbff"},{"label":"SmartBand9 壁紙作成","url":"https://kentaro222.github.io/tools/smart-band-9-bg-maker/","highlight":false,"highlightColor":"#9ecbff"},{"label":"モノポリー銀行","url":"https://kentaro222.github.io/tools/monopoly-ultimate-bank/","highlight":false,"highlightColor":"#9ecbff"},{"label":"カルチョビットA","url":"https://kentaro222.github.io/tools/calciobit-a-strategy-tool/","highlight":false,"highlightColor":"#9ecbff"},{"label":"ポケモン タイプ確認","url":"https://kentaro222.github.io/tools/pokemon-type-checker/","highlight":false,"highlightColor":"#9ecbff"}]}],"appVersion":"2.1","schemaVersion":2}</script>
+
+<script>
+(function dashboardRuntime(){
+  let CONFIG=JSON.parse(document.getElementById('dashboard-config').textContent);
+  const $=id=>document.getElementById(id);
+  let weatherKey='',weatherController=null,weatherSerial=0,weatherLast=0,linksKey='';
+  const safeUrl=value=>{try{const u=new URL(value);return ['http:','https:'].includes(u.protocol)?u.href:null}catch(_){return null}};
+  function clock(){const n=new Date();try{$('date').textContent=n.toLocaleDateString(CONFIG.clock.locale,{weekday:'long',month:'long',day:'numeric'}).toUpperCase();$('clock').textContent=n.toLocaleTimeString(CONFIG.clock.locale,{hour:'2-digit',minute:'2-digit',second:CONFIG.clock.showSeconds?'2-digit':undefined,hour12:CONFIG.clock.hour12})}catch(_){$('clock').textContent=n.toLocaleTimeString()}}
+  function wicon(code){if(code===0)return '☀';if(code<=3)return '⛅';if(code===45||code===48)return '🌫';if((code>=71&&code<=77)||code===85||code===86)return '❄';if(code>=95)return '⛈';if(code>=80&&code<=82)return '🌦';return '🌧'}
+  async function weather(force=false){
+    const w=CONFIG.weather,key=JSON.stringify(w);
+    if(!force&&key===weatherKey)return;
+    weatherKey=key;weatherLast=Date.now();weatherController?.abort();weatherController=new AbortController();
+    const serial=++weatherSerial,controller=weatherController;
+    if(!Number.isFinite(w.latitude)||!Number.isFinite(w.longitude)){$('weather').textContent='';return}
+    $('weather').textContent=w.label+' · Loading weather...';
+    const timeout=setTimeout(()=>controller.abort(),12000);
+    try{
+      const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+w.latitude+'&longitude='+w.longitude+'&current=temperature_2m,weather_code&timezone=auto',{signal:controller.signal});
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      const d=await r.json();if(!d.current||!Number.isFinite(d.current.temperature_2m)||!Number.isFinite(d.current.weather_code))throw new Error('Invalid weather');
+      if(serial===weatherSerial)$('weather').textContent=wicon(d.current.weather_code)+'  '+w.label+'  '+Math.round(d.current.temperature_2m)+'°C';
+    }catch(e){if(serial===weatherSerial)$('weather').textContent=w.label+' · Weather unavailable（15分後に再試行）'}finally{clearTimeout(timeout)}
+  }
+  function renderLinks(){
+    const key=JSON.stringify(CONFIG.linkGroups);if(key===linksKey)return;linksKey=key;
+    const fragment=document.createDocumentFragment();let count=0;
+    for(const g of CONFIG.linkGroups){
+      const section=document.createElement('section');section.className='cat';
+      const title=document.createElement('div');title.className='catlabel';title.textContent=g.name;
+      const grid=document.createElement('div');grid.className='grid';
+      for(const x of g.links){const url=safeUrl(x.url),a=document.createElement(url?'a':'span');a.className='link'+(x.highlight?' highlighted':'');
+        if(url){a.href=url;a.target='_blank';a.rel='noopener noreferrer'}else{a.title='URLを編集してください';a.setAttribute('aria-disabled','true')}
+        if(x.highlight&&/^#[0-9a-f]{6}$/i.test(x.highlightColor||''))a.style.setProperty('--hl',x.highlightColor);
+        const dot=document.createElement('span');dot.className='dot';dot.setAttribute('aria-hidden','true');a.append(dot,document.createTextNode(x.label));grid.append(a);count++;
+      }
+      section.append(title,grid);fragment.append(section);
+    }
+    $('links').replaceChildren(fragment);$('count').textContent=count+' links';
+  }
+  function apply(c){CONFIG=c;$('dashboard-config').textContent=JSON.stringify(CONFIG).replace(/</g,'\\u003c');clock();renderLinks();weather()}
+  $('searchForm').onsubmit=e=>{e.preventDefault();const q=$('search').value.trim();if(q&&safeUrl(CONFIG.search.engine))window.open(CONFIG.search.engine+encodeURIComponent(q),'_blank','noopener,noreferrer')};
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-weatherLast>15*60*1000)weather(true)});
+  $('secretExport').onclick=()=>{
+    try{
+      const page=document.documentElement.cloneNode(true);
+      page.querySelector('#dashboard-config').textContent=JSON.stringify(CONFIG).replace(/</g,'\\u003c');
+      page.querySelector('#links').replaceChildren();page.querySelector('#count').textContent='';
+      page.querySelector('#weather').textContent='Weather...';page.querySelector('#date').textContent='';page.querySelector('#clock').textContent='00:00';
+      const search=page.querySelector('#search');search.value='';search.removeAttribute('value');
+      const blob=new Blob(['<!DOCTYPE html>\n'+page.outerHTML],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;a.download='index.html';document.body.append(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url)},1000);
+    }catch(e){alert('index.html を出力できませんでした。')}
+  };
+  window.addEventListener('message',e=>{if(window.parent!==window&&e.source===window.parent&&e.data?.type==='dashboard-update'&&e.data.config)apply(e.data.config)});
+  apply(CONFIG);setInterval(clock,1000);setInterval(()=>{if(document.visibilityState==='visible')weather(true)},15*60*1000);
+  if(window.parent!==window)window.parent.postMessage({type:'dashboard-ready'},'*');
+})();
+</script>
+</body>
+</html>
