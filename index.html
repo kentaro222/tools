@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard</title>
+<title>Tools</title>
 <meta name="generator" content="Dashboard Builder 2.1">
 <meta name="theme-color" content="#0a0d12">
 <link rel="icon" href="./favicon.ico" sizes="16x16 32x32 48x48">
@@ -21,6 +21,7 @@ button,input{font:inherit}button{color:inherit;cursor:pointer}
 .top{display:flex;justify-content:space-between;align-items:center}.weather{color:var(--muted);font-size:14px}
 .icon,.btn{border:1px solid var(--border);background:rgba(255,255,255,.055);border-radius:12px;padding:9px 11px;color:inherit}.icon{width:42px;height:42px}
 .hero{text-align:center;padding:34px 0 26px}.date{color:var(--muted);font-size:13px;letter-spacing:.15em}.clock{font-size:clamp(72px,13vw,150px);font-weight:200;letter-spacing:-.055em;font-variant-numeric:tabular-nums;line-height:.95;margin-top:10px}
+.hero.no-clock{padding-top:12px}.hero.no-clock .searchw{margin-top:12px}[hidden]{display:none!important}
 .searchw{max-width:720px;margin:28px auto 0}.search{width:100%;height:58px;border-radius:17px;border:1px solid var(--border);background:rgba(255,255,255,.07);color:white;outline:0;padding:0 18px}
 .layout{margin-top:28px}.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);backdrop-filter:blur(20px);box-shadow:0 18px 60px rgba(0,0,0,.28)}
 .links{padding:22px}.title{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.title h2{font-size:14px;margin:0}.title span{font-size:11px;color:var(--muted)}
@@ -68,7 +69,7 @@ button,input{font:inherit}button{color:inherit;cursor:pointer}
 
 <button id="secretExport" class="secret-export" type="button" title="Export index.html" aria-label="Export index.html">↓</button>
 
-<script id="dashboard-config" type="application/json">{"clock":{"locale":"ja-JP","showSeconds":false,"hour12":false},"weather":{"label":"東京","latitude":35.6809591,"longitude":139.7673068},"search":{"engine":"https://www.google.com/search?q="},"builder":{"outputFilename":"tools.html"},"linkGroups":[{"name":"Tool","links":[{"label":"おい森 図鑑","url":"https://kentaro222.github.io/tools/wild-world-encyclopedia/","highlight":false,"highlightColor":"#9ecbff"},{"label":"濃度計算","url":"https://kentaro222.github.io/tools/concentration-calculation/","highlight":false,"highlightColor":"#9ecbff"},{"label":"SmartBand9 壁紙作成","url":"https://kentaro222.github.io/tools/smart-band-9-bg-maker/","highlight":false,"highlightColor":"#9ecbff"},{"label":"モノポリー銀行","url":"https://kentaro222.github.io/tools/monopoly-ultimate-bank/","highlight":false,"highlightColor":"#9ecbff"},{"label":"カルチョビットA","url":"https://kentaro222.github.io/tools/calciobit-a-strategy-tool/","highlight":false,"highlightColor":"#9ecbff"},{"label":"ポケモン タイプ確認","url":"https://kentaro222.github.io/tools/pokemon-type-checker/","highlight":false,"highlightColor":"#9ecbff"}]}],"appVersion":"2.1","schemaVersion":2}</script>
+<script id="dashboard-config" type="application/json">{"title":"Tools","clock":{"locale":"ja-JP","showSeconds":false,"hour12":false,"visible":false},"weather":{"label":"東京","latitude":35.6809591,"longitude":139.7673068,"visible":false},"search":{"engine":"https://www.google.com/search?q="},"builder":{"outputFilename":"tools.html"},"linkGroups":[{"name":"Tool","links":[{"label":"おい森 図鑑","url":"https://kentaro222.github.io/tools/wild-world-encyclopedia/","highlight":false,"highlightColor":"#9ecbff"},{"label":"濃度計算","url":"https://kentaro222.github.io/tools/concentration-calculation/","highlight":false,"highlightColor":"#9ecbff"},{"label":"SmartBand9 壁紙作成","url":"https://kentaro222.github.io/tools/smart-band-9-bg-maker/","highlight":false,"highlightColor":"#9ecbff"},{"label":"モノポリー銀行","url":"https://kentaro222.github.io/tools/monopoly-ultimate-bank/","highlight":false,"highlightColor":"#9ecbff"},{"label":"カルチョビットA","url":"https://kentaro222.github.io/tools/calciobit-a-strategy-tool/","highlight":false,"highlightColor":"#9ecbff"},{"label":"ポケモン タイプ確認","url":"https://kentaro222.github.io/tools/pokemon-type-checker/","highlight":false,"highlightColor":"#9ecbff"}]}],"appVersion":"2.1","schemaVersion":2}</script>
 
 <script>
 (function dashboardRuntime(){
@@ -83,6 +84,7 @@ button,input{font:inherit}button{color:inherit;cursor:pointer}
     if(!force&&key===weatherKey)return;
     weatherKey=key;weatherLast=Date.now();weatherController?.abort();weatherController=new AbortController();
     const serial=++weatherSerial,controller=weatherController;
+    if(!w.visible){$('weather').textContent='';return}
     if(!Number.isFinite(w.latitude)||!Number.isFinite(w.longitude)){$('weather').textContent='';return}
     $('weather').textContent=w.label+' · Loading weather...';
     const timeout=setTimeout(()=>controller.abort(),12000);
@@ -109,7 +111,7 @@ button,input{font:inherit}button{color:inherit;cursor:pointer}
     }
     $('links').replaceChildren(fragment);$('count').textContent=count+' links';
   }
-  function apply(c){CONFIG=c;$('dashboard-config').textContent=JSON.stringify(CONFIG).replace(/</g,'\\u003c');clock();renderLinks();weather()}
+  function apply(c){CONFIG=c;$('dashboard-config').textContent=JSON.stringify(CONFIG).replace(/</g,'\\u003c');document.title=CONFIG.title||'Dashboard';$('weather').hidden=!CONFIG.weather.visible;$('date').hidden=!CONFIG.clock.visible;$('clock').hidden=!CONFIG.clock.visible;document.querySelector('.hero').classList.toggle('no-clock',!CONFIG.clock.visible);clock();renderLinks();weather()}
   $('searchForm').onsubmit=e=>{e.preventDefault();const q=$('search').value.trim();if(q&&safeUrl(CONFIG.search.engine))window.open(CONFIG.search.engine+encodeURIComponent(q),'_blank','noopener,noreferrer')};
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-weatherLast>15*60*1000)weather(true)});
   $('secretExport').onclick=()=>{
